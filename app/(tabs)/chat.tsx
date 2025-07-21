@@ -14,8 +14,10 @@ import {
   KeyboardAvoidingView,
   Platform,
   Dimensions,
+  Image,
 } from 'react-native';
 import { Send, Bot, User, TrendingUp, DollarSign, Target, Lightbulb } from 'lucide-react-native';
+import MarkdownText from '../../components/MarkdownText';
 
 const { width } = Dimensions.get('window');
 
@@ -210,12 +212,21 @@ export default function ChatScreen() {
                   styles.messageBubble,
                   message.isUser ? styles.userBubble : styles.aiBubble
                 ]}>
-                  <Text style={[
-                    styles.messageText,
-                    message.isUser ? styles.userText : styles.aiText
-                  ]}>
-                    {message.text}
-                  </Text>
+                  {message.isUser ? (
+                    <Text style={[
+                      styles.messageText,
+                      styles.userText
+                    ]}>
+                      {message.text}
+                    </Text>
+                  ) : (
+                    <MarkdownText style={[
+                      styles.messageText,
+                      styles.aiText
+                    ]}>
+                      {message.text}
+                    </MarkdownText>
+                  )}
                   <Text style={[
                     styles.messageTime,
                     message.isUser ? styles.userTime : styles.aiTime

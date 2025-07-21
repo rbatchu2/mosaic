@@ -1,5 +1,5 @@
 import { Tabs } from 'expo-router';
-import { Layers, TrendingUp, User, Sparkles, MessageCircle } from 'lucide-react-native';
+import { Home, Layers, MessageCircle, User, BarChart3 } from 'lucide-react-native';
 
 export default function TabLayout() {
   return (
@@ -32,7 +32,7 @@ export default function TabLayout() {
         options={{
           title: 'Home',
           tabBarIcon: ({ size, color }) => (
-            <Sparkles size={size} color={color} />
+            <Home size={size} color={color} />
           ),
         }}
       />
@@ -46,20 +46,20 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="analytics"
+        name="chat"
         options={{
-          title: 'Analytics',
+          title: 'Chat',
           tabBarIcon: ({ size, color }) => (
-            <TrendingUp size={size} color={color} />
+            <MessageCircle size={size} color={color} />
           ),
         }}
       />
       <Tabs.Screen
-        name="chat"
+        name="analytics"
         options={{
-          title: 'AI Assistant',
+          title: 'Analytics',
           tabBarIcon: ({ size, color }) => (
-            <MessageCircle size={size} color={color} />
+            <BarChart3 size={size} color={color} />
           ),
         }}
       />
@@ -70,6 +70,19 @@ export default function TabLayout() {
           tabBarIcon: ({ size, color }) => (
             <User size={size} color={color} />
           ),
+        }}
+      />
+      {/* Hide unwanted tabs */}
+      <Tabs.Screen
+        name="trips"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="wallets-backup"
+        options={{
+          href: null,
         }}
       />
     </Tabs>

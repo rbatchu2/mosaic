@@ -8,8 +8,113 @@ interface ChatMessage {
   paymentRequest?: any;
 }
 
-// Mock AI responses with financial context
-const generateFinancialResponse = (userMessage: string, context?: any): { text: string; suggestions?: string[] } => {
+import { openaiService } from '../../services/openaiService';
+
+interface TripSuggestion {
+  id: string;
+  title: string;
+  destination: string;
+  price: number;
+  duration: string;
+  image: string;
+}
+
+interface PaymentRequest {
+  id: string;
+  description: string;
+  amount: number;
+  currency: string;
+  breakdown?: Array<{ item: string; cost: number }>;
+}
+
+// AI-powered financial responses
+const generateFinancialResponse = async (userMessage: string, context?: any): Promise<{
+  text: string;
+  suggestions?: string[];
+  tripSuggestions?: TripSuggestion[];
+  paymentRequest?: PaymentRequest;
+}> => {
+  try {
+    // Use GPT for intelligent responses
+    const aiResponse = await openaiService.generateChatResponse(userMessage, {
+      userProfile: {
+        name: 'Alex Johnson',
+        savingsRate: 23,
+        monthlyIncome: 4200,
+        totalBalance: 16847.34
+      },
+      recentTransactions: [
+        {
+          id: '1',
+          description: 'Whole Foods Market',
+          amount: -67.82,
+          merchantName: 'Whole Foods',
+          category: ['Food and Drink', 'Groceries'],
+          date: '2024-06-10T14:30:00Z'
+        },
+        {
+          id: '2',
+          description: 'Uber ride downtown',
+          amount: -18.50,
+          merchantName: 'Uber',
+          category: ['Transportation'],
+          date: '2024-06-10T09:15:00Z'
+        }
+      ],
+      spendingAnalysis: {
+        totalSpent: 1456.78,
+        savingsRate: 23,
+        categories: [
+          { name: 'Food & Dining', amount: 567.23, percentage: 38.9 },
+          { name: 'Transportation', amount: 234.56, percentage: 16.1 }
+        ]
+      },
+      goalProgress: {
+        activeGoals: 3,
+        completionRate: 62
+      }
+    });
+
+    // Check for specific action items from AI response
+    if (aiResponse.actionItems) {
+      for (const action of aiResponse.actionItems) {
+        if (action.type === 'split_bill' && action.data) {
+          // Add payment request for bill splitting
+          return {
+            text: aiResponse.text,
+            suggestions: aiResponse.suggestions,
+            paymentRequest: {
+              id: 'split_' + Date.now(),
+              description: action.data.description || 'Split Bill',
+              amount: action.data.amount || 0,
+              currency: 'USD',
+              breakdown: action.data.breakdown || []
+            }
+          };
+        }
+      }
+    }
+
+    return {
+      text: aiResponse.text,
+      suggestions: aiResponse.suggestions
+    };
+
+  } catch (error) {
+    console.error('AI response failed:', error);
+    
+    // Fallback to rule-based responses if AI fails
+    return generateFallbackResponse(userMessage);
+  }
+};
+
+// Fallback function for when AI is unavailable
+const generateFallbackResponse = (userMessage: string): {
+  text: string;
+  suggestions?: string[];
+  tripSuggestions?: TripSuggestion[];
+  paymentRequest?: PaymentRequest;
+} => {
   const lowerMessage = userMessage.toLowerCase();
   
   if (lowerMessage.includes('analyz') || lowerMessage.includes('spending') || lowerMessage.includes('pattern')) {
@@ -188,10 +293,10 @@ export async function POST(request: Request) {
     }
 
     // Simulate AI processing time
-    await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 1000));
+    await new Promise(resolve => setTimeout(resolve, 500 + Math.random() * 500));
 
-    // Generate contextual response
-    const response = generateFinancialResponse(message);
+    // Generate contextual response with AI
+    const response = await generateFinancialResponse(message);
 
     const aiMessage: ChatMessage = {
       id: Date.now().toString(),
