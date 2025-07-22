@@ -9,6 +9,7 @@ import {
   TouchableOpacity,
   SafeAreaView,
   Alert,
+  Platform,
 } from 'react-native';
 import { Plus, Brain, Check, X, DollarSign, MapPin, ArrowUpRight, Edit3, Zap, Users, Utensils, Car, Home, Film, Plane, Tag } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
@@ -108,21 +109,16 @@ export default function WalletsScreen() {
   useEffect(() => {
     const fetchSplitSuggestions = async () => {
       try {
-        console.log('🔄 Starting to fetch AI suggestions...');
-        console.log('📊 Available transactions:', transactions.length);
         setSuggestionsLoading(true);
         
         // Get recent transactions and generate AI suggestions for them
-        const recentTransactions = transactions.slice(0, 3); // Top 3 recent transactions to start
-        console.log('🎯 Processing transactions:', recentTransactions.map((t: any) => t.description));
+        const recentTransactions = transactions.slice(0, 10); // Process top 10 transactions for more suggestions
         const suggestions = [];
         
         for (const transaction of recentTransactions) {
           try {
-            console.log(`🤖 Getting AI suggestion for: ${transaction.description}`);
             const response = await fetch(`/api/plaid/split-suggestions?transactionId=${transaction.id}&userId=00000000-0000-0000-0000-000000000001`);
             const data = await response.json();
-            console.log(`✅ AI response for ${transaction.description}:`, data.success ? 'Success' : 'Failed');
             
             if (data.success && data.suggestion) {
               const suggestion = {
@@ -130,7 +126,7 @@ export default function WalletsScreen() {
                 transactionId: transaction.id,
                 amount: Math.abs(transaction.amount),
                 description: transaction.description,
-                merchantName: transaction.merchant_name || 'Unknown',
+                merchantName: transaction.merchantName || 'Unknown',
                 date: transaction.date,
                 confidence: data.suggestion.confidence,
                 matchedGroup: data.suggestion.matchedGroup,
@@ -143,28 +139,22 @@ export default function WalletsScreen() {
                 status: 'pending' as 'pending' | 'accepted' | 'rejected'
               };
               suggestions.push(suggestion);
-              console.log(`📝 Added suggestion for ${transaction.description}, groups: ${suggestion.groupSuggestions?.length || 0}`);
             }
           } catch (error) {
-            console.error('❌ Error fetching split suggestion for transaction:', transaction.id, error);
+            console.error('Error fetching split suggestion for transaction:', transaction.id, error);
           }
         }
         
-        console.log(`🎉 Final suggestions count: ${suggestions.length}`);
         setSplitSuggestions(suggestions);
       } catch (error) {
-        console.error('❌ Error fetching split suggestions:', error);
+        console.error('Error fetching split suggestions:', error);
       } finally {
         setSuggestionsLoading(false);
-        console.log('✅ Suggestions loading complete');
       }
     };
 
     if (transactions.length > 0) {
-      console.log('🚀 Transactions available, starting suggestion fetch...');
       fetchSplitSuggestions();
-    } else {
-      console.log('⏳ No transactions available yet');
     }
   }, [transactions]);
 
@@ -185,7 +175,11 @@ export default function WalletsScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        style={styles.scrollView} 
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+      >
         {/* Header */}
         <View style={styles.header}>
           <View>
@@ -224,9 +218,12 @@ export default function WalletsScreen() {
               style={[styles.tabButton, activeTab === tab && styles.activeTabButton]}
               onPress={() => setActiveTab(tab)}
             >
-              <Text style={[styles.tabButtonText, activeTab === tab && styles.activeTabButtonText]}>
-                {tab.charAt(0).toUpperCase() + tab.slice(1)}
-                {tab === 'suggestions' && ` (${splitSuggestions.length})`}
+              <Text 
+                style={[styles.tabButtonText, activeTab === tab && styles.activeTabButtonText]}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+              >
+                {tab === 'suggestions' ? `Suggests (${splitSuggestions.length})` : tab.charAt(0).toUpperCase() + tab.slice(1)}
               </Text>
             </TouchableOpacity>
           ))}
@@ -240,61 +237,10 @@ export default function WalletsScreen() {
               <Text style={styles.sectionDescription}>
                 GPT analyzed these expenses and found multiple group matches for you to choose from.
               </Text>
-              
-              <View style={styles.debugContainer}>
-                <Text style={styles.debugText}>Debug Info:</Text>
-                <Text style={styles.debugText}>• Transactions loaded: {transactions.length}</Text>
-                <Text style={styles.debugText}>• Suggestions loading: {suggestionsLoading ? 'Yes' : 'No'}</Text>
-                <Text style={styles.debugText}>• Suggestions count: {splitSuggestions.length}</Text>
-                
-                <TouchableOpacity 
-                  style={styles.debugButton}
-                  onPress={async () => {
-                    try {
-                      alert('🔴 Starting manual test...');
-                      
-                      if (transactions.length === 0) {
-                        alert('❌ No transactions available');
-                        return;
-                      }
-                      
-                      const testTransaction = transactions[0];
-                      alert(`🔴 Testing: ${testTransaction.description}`);
-                      
-                      const response = await fetch(`/api/plaid/split-suggestions?transactionId=${testTransaction.id}&userId=00000000-0000-0000-0000-000000000001`);
-                      
-                      if (!response.ok) {
-                        alert(`❌ Response error: ${response.status}`);
-                        return;
-                      }
-                      
-                      const data = await response.json();
-                      
-                      if (data.success) {
-                        const groupCount = data.suggestion?.groupSuggestions?.length || 0;
-                        alert(`✅ Success! Found ${groupCount} group suggestions`);
-                        
-                        if (groupCount > 0) {
-                          const groupNames = data.suggestion.groupSuggestions.map((g: any) => g.group?.name).join(', ');
-                          alert(`📋 Groups: ${groupNames}`);
-                        }
-                      } else {
-                        alert(`❌ API failed: ${data.error || 'Unknown error'}`);
-                      }
-                      
-                    } catch (error) {
-                      alert(`💥 Error: ${error}`);
-                    }
-                  }}
-                >
-                  <Text style={styles.debugButtonText}>🧪 Manual Test</Text>
-                </TouchableOpacity>
-              </View>
 
               {suggestionsLoading ? (
                 <View style={styles.loadingContainer}>
                   <Text style={styles.loadingText}>Getting AI suggestions...</Text>
-                  <Text style={styles.debugText}>Loading suggestions for {transactions.length} transactions...</Text>
                 </View>
               ) : splitSuggestions.length === 0 ? (
                 <View style={styles.emptyState}>
@@ -336,10 +282,10 @@ export default function WalletsScreen() {
                     )}
 
                     {/* Multiple Group Suggestions */}
-                    {suggestion.groupSuggestions && suggestion.groupSuggestions.length > 0 ? (
+                    {suggestion.groupSuggestions && suggestion.groupSuggestions.filter(groupSugg => groupSugg.confidence >= 0.70).length > 0 ? (
                       <View style={styles.groupOptionsContainer}>
                         <Text style={styles.groupOptionsTitle}>Choose a group:</Text>
-                        {suggestion.groupSuggestions.map((groupSugg, index) => (
+                        {suggestion.groupSuggestions.filter(groupSugg => groupSugg.confidence >= 0.70).map((groupSugg, index) => (
                           <TouchableOpacity key={index} style={styles.groupOptionCard}>
                             <View style={styles.groupOptionLeft}>
                               <View style={[styles.groupOptionIcon, { backgroundColor: groupSugg.group.color || '#6B7280' }]}>
@@ -378,7 +324,7 @@ export default function WalletsScreen() {
                       
                       <TouchableOpacity style={styles.customizeButton}>
                         <Edit3 size={16} color="#6B7280" />
-                        <Text style={styles.customizeButtonText}>Customize</Text>
+                        <Text style={styles.customizeButtonText}>Edit</Text>
                       </TouchableOpacity>
                       
                       <TouchableOpacity 
@@ -466,6 +412,9 @@ const styles = StyleSheet.create({
   },
   scrollView: {
     flex: 1,
+  },
+  scrollContent: {
+    paddingBottom: 100,
   },
   header: {
     flexDirection: 'row',
@@ -555,10 +504,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#0EA5E9',
   },
   tabButtonText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '500',
     color: '#6B7280',
     fontFamily: 'Inter-Medium',
+    textAlign: 'center',
   },
   activeTabButtonText: {
     color: '#FFFFFF',
@@ -833,31 +783,5 @@ const styles = StyleSheet.create({
     color: '#1D4ED8',
     fontFamily: 'Inter-Medium',
     textTransform: 'capitalize',
-  },
-  debugContainer: {
-    backgroundColor: '#FEF3C7',
-    padding: 12,
-    borderRadius: 8,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: '#F59E0B',
-  },
-  debugText: {
-    fontSize: 12,
-    color: '#92400E',
-    fontFamily: 'Inter-Medium',
-    marginBottom: 2,
-  },
-  debugButton: {
-    backgroundColor: '#EF4444',
-    padding: 8,
-    borderRadius: 6,
-    marginTop: 8,
-    alignItems: 'center',
-  },
-  debugButtonText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontFamily: 'Inter-SemiBold',
   },
 }); 

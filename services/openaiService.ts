@@ -3,21 +3,15 @@ import 'react-native-url-polyfill/auto';
 
 // Environment configuration for OpenAI
 const getOpenAIConfig = () => {
-  // On mobile, use EXPO_PUBLIC_ variables since process.env isn't available
-  const apiKey = Platform.OS === 'web' 
-    ? (process.env.OPENAI_API_KEY || process.env.EXPO_PUBLIC_OPENAI_API_KEY)
-    : process.env.EXPO_PUBLIC_OPENAI_API_KEY;
+  // Prioritize OPENAI_API_KEY, fallback to EXPO_PUBLIC_OPENAI_API_KEY
+  const apiKey = process.env.OPENAI_API_KEY || process.env.EXPO_PUBLIC_OPENAI_API_KEY;
   
-  const organization = Platform.OS === 'web'
-    ? (process.env.OPENAI_ORGANIZATION || process.env.EXPO_PUBLIC_OPENAI_ORGANIZATION)
-    : process.env.EXPO_PUBLIC_OPENAI_ORGANIZATION;
+  const organization = process.env.OPENAI_ORGANIZATION || process.env.EXPO_PUBLIC_OPENAI_ORGANIZATION;
   
-  const model = Platform.OS === 'web'
-    ? (process.env.OPENAI_MODEL || process.env.EXPO_PUBLIC_OPENAI_MODEL || 'gpt-4o-mini')
-    : (process.env.EXPO_PUBLIC_OPENAI_MODEL || 'gpt-4o-mini');
+  const model = process.env.OPENAI_MODEL || process.env.EXPO_PUBLIC_OPENAI_MODEL || 'gpt-4o-mini';
 
   if (!apiKey) {
-    throw new Error('OpenAI API key is required. Please set EXPO_PUBLIC_OPENAI_API_KEY in your environment variables.');
+    throw new Error('OpenAI API key is required. Please set OPENAI_API_KEY or EXPO_PUBLIC_OPENAI_API_KEY in your environment variables.');
   }
 
   return { apiKey, organization, model };
@@ -153,12 +147,21 @@ class OpenAIService {
     userContext?: {
       recentSplits?: Array<{ participants: string[]; merchant?: string; category?: string }>;
       preferences?: { favoriteGroups: string[]; defaultSplitType: string };
+      currentTrip?: {
+        name: string;
+        dates: string;
+        locations: string[];
+        participants: string[];
+      };
     }
   ): Promise<SplitSuggestion> {
     try {
+      console.log('🔍 Starting OpenAI split analysis...');
       const client = getOpenAIClient();
+      console.log('✅ OpenAI client created successfully');
 
       const prompt = this.buildSplitAnalysisPrompt(transaction, expenseGroups, userContext);
+      console.log('✅ Prompt built successfully, length:', prompt.length);
 
       const response = await client.createChatCompletion({
         model: this.model,
@@ -174,6 +177,8 @@ class OpenAIService {
             4. Recommend the best split type (equal, custom, percentage)
             5. Provide clear reasoning for your recommendations
             
+            IMPORTANT: In your reasoning, always refer to the EXACT merchant name and description from the transaction data provided. Do not invent or substitute merchant names.
+            
             CRITICAL: Respond ONLY with valid JSON. Do not include any text before or after the JSON. Use double quotes for all strings and property names. No comments allowed in JSON.`
           },
           {
@@ -184,8 +189,11 @@ class OpenAIService {
         temperature: 0.3,
         max_tokens: 1000,
       });
+      console.log('✅ OpenAI API call successful');
 
       const content = response.choices?.[0]?.message?.content;
+      console.log('✅ Response content received, length:', content?.length || 0);
+      
       if (!content) {
         throw new Error('No response from OpenAI');
       }
@@ -466,75 +474,105 @@ TRANSACTION:
 - Merchant: ${transaction.merchantName || 'Unknown'}
 - Amount: $${Math.abs(transaction.amount)}
 - Category: ${transaction.category?.join(', ') || 'None'}
-- Date: ${transaction.date}
+- Date: ${transaction.date} (Format: YYYY-MM-DD, so ${transaction.date} = ${new Date(transaction.date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })})
 - Location: ${transaction.location ? `${transaction.location.city}, ${transaction.location.region}` : 'Unknown'}
 
 AVAILABLE EXPENSE GROUPS:
 ${expenseGroups.map((group, idx) => `
 ${idx + 1}. ${group.name} (${group.category})
+   Description: ${group.description}
    Members: ${group.members.map(m => m.name).join(', ')}
    Keywords: ${group.context.keywords.join(', ')}
    Merchants: ${group.context.merchants.join(', ')}
    Locations: ${group.context.locations.join(', ')}
 `).join('\n')}
 
- ${userContext?.recentSplits ? `
- RECENT SPLIT PATTERNS:
- ${userContext.recentSplits.slice(0, 3).map((split: any, idx: number) => `
- - Split ${idx + 1}: ${split.participants.length} people, ${split.merchant || 'Unknown merchant'}, Category: ${split.category || 'Unknown'}
- `).join('\n')}
- ` : ''}
+${userContext?.currentTrip ? `
+CURRENT ACTIVE TRIP:
+- Trip: ${userContext.currentTrip.name}
+- Dates: ${userContext.currentTrip.dates}
+- Locations: ${userContext.currentTrip.locations.join(' → ')}
+- Participants: ${userContext.currentTrip.participants.join(', ')}
+
+IMPORTANT: If this transaction falls within the trip dates and locations, it should likely be matched to the "Road Trip Crew" travel group for shared expenses.
+` : ''}
+
+RECENT SPLIT PATTERNS:
+${userContext?.recentSplits?.slice(0, 4).map((split: any, idx: number) => `
+- Split ${idx + 1}: ${split.participants.length} people, ${split.merchant || 'Unknown merchant'}, Category: ${split.category || 'Unknown'}
+`).join('') || 'No recent patterns available'}
+
+ANALYSIS GUIDELINES:
+1. **DATE ANALYSIS (CRITICAL)**: Check if transaction date falls within active trip dates - this is the strongest indicator for travel group matching
+2. **Travel Expenses**: Gas stations, hotels, national parks, tours, restaurants during travel should match the travel group
+3. **Location Context**: Check if transaction location matches any group's typical locations
+4. **Merchant Matching**: Look for exact merchant matches in group context
+5. **Category Logic**: Travel/Transportation/Recreation categories often indicate shared trip expenses
+6. **Combined Context**: Date + Location + Merchant type together provide strongest matching signals
+
+**CRITICAL DATE MATCHING RULE**: 
+- If transaction date is between 2024-03-10 and 2024-03-20 (March 10-20, 2024), it's almost certainly part of the SFO to Moab road trip
+- Date format is YYYY-MM-DD: 2024-03-10 = March 10th, 2024 (NOT June 10th!)
+- ANY expense during these MARCH dates in travel locations (CA, NV, UT, AZ) should strongly favor the Road Trip Crew
+- Even regular expenses like food/gas become shared trip costs during active travel dates
 
 Analyze this transaction and provide a JSON response with the following structure:
 {
-  "confidence": 0.85,
+  "confidence": 0.95,
   "splitType": "equal", 
-  "reasoning": "This appears to be a restaurant expense that matches your dining group pattern",
+  "reasoning": "Transaction date (2024-03-12) falls perfectly within your SFO to Moab road trip dates (March 10-20). MGM Grand in Las Vegas is a clear shared accommodation cost for all road trip participants.",
+  "transactionDateReceived": "2024-03-12 (March 12, 2024)",
   "suggestedParticipants": [
     {
-      "id": "user_id",
-      "name": "User Name", 
-      "confidence": 0.9,
-      "reason": "Frequently dines with this group"
+      "id": "user_001",
+      "name": "Alex Johnson", 
+      "confidence": 0.98,
+      "reason": "Road trip participant - shared trip dates"
+    },
+    {
+      "id": "user_002", 
+      "name": "Sarah Chen",
+      "confidence": 0.98,
+      "reason": "Road trip participant - shared trip dates"
     }
   ],
   "amounts": {
-    "user_id": 25.50
+    "user_001": 72.25,
+    "user_002": 72.25,
+    "user_003": 72.25,
+    "user_007": 72.25
   },
-  "matchedGroup": "Best Group Name",
+  "matchedGroup": "Road Trip Crew",
   "groupSuggestions": [
     {
-      "groupName": "Primary Group",
+      "groupName": "Road Trip Crew",
       "confidence": 0.95,
-      "reasoning": "Perfect match based on merchant and category",
-      "matchingFactors": ["merchant_match", "category_fit", "location_proximity"]
+      "reasoning": "Perfect date match (March 12 within trip dates March 10-20) + Las Vegas location + hotel expense type",
+      "matchingFactors": ["date_perfect_match", "location_match", "travel_category", "merchant_type"]
     },
     {
-      "groupName": "Secondary Group", 
-      "confidence": 0.72,
-      "reasoning": "Alternative option based on member overlap",
-      "matchingFactors": ["member_overlap", "similar_patterns"]
+      "groupName": "Foodie Friends",
+      "confidence": 0.15,
+      "reasoning": "Very unlikely - dates indicate this is a travel expense, not regular dining",
+      "matchingFactors": ["member_overlap_only"]
     }
   ],
-  "categories": ["dining", "social"]
+  "categories": ["travel", "road_trip", "accommodation"]
 }
 
-IMPORTANT: Analyze ALL available groups and rank them by relevance. Provide 2-4 group suggestions ordered by confidence.
+IMPORTANT: Analyze ALL available groups and rank them by relevance. Focus heavily on the travel context if this appears to be a trip-related expense.
 
 Consider for each group:
-1. Transaction context (merchant type, amount, description)
-2. Keyword and merchant matches from group context
-3. Category alignment (dining, transport, household, etc.)
-4. Location relevance 
-5. Group member patterns and historical behavior
-6. Transaction amount reasonableness for the group
+1. **Travel Context**: Does this transaction fit the active road trip scenario?
+2. **Transaction context** (merchant type, amount, description, location)
+3. **Keyword and merchant matches** from group context
+4. **Category alignment** (travel, dining, transport, household, etc.)
+5. **Location relevance** to group's typical locations
+6. **Date context** relative to active trips
+7. **Group member patterns** and historical behavior
+8. **Transaction amount reasonableness** for the group
 
-For groupSuggestions, rank all groups that have >40% confidence. Include:
-- Primary match (highest confidence)
-- Alternative options (medium confidence) 
-- Possible options (lower but viable confidence)
-
-Use these matching factors: ["merchant_match", "category_perfect", "keyword_match", "location_fit", "amount_reasonable", "member_patterns", "historical_splits", "timing_context"]`;
+Provide 2-4 group suggestions ordered by confidence. Be especially intelligent about travel expenses during active trips.`;
   }
 
   private buildChatPrompt(message: string, context?: any): string {

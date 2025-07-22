@@ -33,44 +33,63 @@ export async function GET(request: Request) {
     const url = new URL(request.url);
     const userId = url.searchParams.get('userId') || '00000000-0000-0000-0000-000000000001';
 
-    let groups;
-    
-    try {
-      // Try to fetch groups from Supabase
-      groups = await supabaseService.getExpenseGroups(userId);
-    } catch (error) {
-      console.log('Supabase not available, using mock data:', error);
-      groups = null;
-    }
-    
-    // Fallback to mock data if Supabase fails
-    if (!groups || groups.length === 0) {
-      return new Response(JSON.stringify({
-        success: true,
-        groups: groupsMemory
-      }), {
-        headers: { 'Content-Type': 'application/json' },
-      });
-    }
-
-    // Get member counts for each group
-    const groupsWithCounts = await Promise.all(
-      groups.map(async (group) => {
-        const members = await supabaseService.getGroupMembers(group.id);
-        return {
-          id: group.id,
-          name: group.name,
-          description: group.description,
-          category: group.category,
-          color: group.color,
-          memberCount: members.length
-        };
-      })
-    );
+    // Use mock expense groups instead of Supabase
+    const mockGroups = [
+      {
+        id: 'group_001',
+        name: 'Foodie Friends',
+        description: 'Regular dining group for restaurants and food experiences',
+        category: 'dining',
+        color: '#EF4444',
+        memberCount: 3,
+        user_id: userId,
+        created_at: '2024-06-01T10:00:00Z'
+      },
+      {
+        id: 'group_002',
+        name: 'Commute Crew',
+        description: 'Transportation sharing for daily commutes',
+        category: 'transport',
+        color: '#3B82F6',
+        memberCount: 2,
+        user_id: userId,
+        created_at: '2024-06-02T15:30:00Z'
+      },
+      {
+        id: 'group_003',
+        name: 'House Mates',
+        description: 'Household expenses and utilities',
+        category: 'household',
+        color: '#10B981',
+        memberCount: 4,
+        user_id: userId,
+        created_at: '2024-06-03T09:15:00Z'
+      },
+      {
+        id: 'group_004',
+        name: 'Weekend Warriors',
+        description: 'Entertainment and social activities',
+        category: 'entertainment',
+        color: '#8B5CF6',
+        memberCount: 5,
+        user_id: userId,
+        created_at: '2024-06-04T18:45:00Z'
+      },
+      {
+        id: 'group_005',
+        name: 'Road Trip Crew',
+        description: 'Epic SFO to Moab adventure - sharing all travel, lodging, and activity costs',
+        category: 'travel',
+        color: '#F59E0B',
+        memberCount: 4,
+        user_id: userId,
+        created_at: '2024-03-08T12:00:00Z'
+      }
+    ];
 
     return new Response(JSON.stringify({
       success: true,
-      groups: groupsWithCounts
+      groups: mockGroups
     }), {
       headers: { 'Content-Type': 'application/json' },
     });
@@ -88,71 +107,37 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const { name, description, category, color, members, userId } = await request.json();
+    const { name, description, category, userId } = await request.json();
 
-    if (!name || !category) {
+    if (!name || !description || !category || !userId) {
       return new Response(JSON.stringify({
         success: false,
-        error: 'Name and category are required'
+        error: 'Missing required fields'
       }), {
         status: 400,
         headers: { 'Content-Type': 'application/json' },
       });
     }
 
-    const groupData = {
-      user_id: userId || '00000000-0000-0000-0000-000000000001',
+    // Mock creating a new group
+    const newGroup = {
+      id: 'group_' + Date.now(),
       name,
-      description: description || '',
+      description,
       category,
-      color: color || '#3B82F6'
+      color: '#6B7280', // Default color
+      memberCount: 1,
+      user_id: userId,
+      created_at: new Date().toISOString()
     };
 
-    try {
-      // Try to create group in Supabase
-      const newGroup = await supabaseService.createExpenseGroup(groupData);
-      
-      if (newGroup && members && members.length > 0) {
-        // Add members to the group - using direct client access
-        // TODO: Add createGroupMember method to supabaseService
-        console.log('Group created successfully, members would be added here');
-      }
-
-      return new Response(JSON.stringify({
-        success: true,
-        group: {
-          id: newGroup?.id,
-          name,
-          description,
-          category,
-          color,
-          memberCount: members ? members.length : 0
-        }
-      }), {
-        headers: { 'Content-Type': 'application/json' },
-      });
-    } catch (supabaseError) {
-      console.log('Supabase not available, using mock response:', supabaseError);
-      
-      // Mock response when Supabase is not available
-      const mockGroup = {
-        id: 'group_' + Date.now(),
-        name,
-        description,
-        category,
-        color,
-        memberCount: members ? members.length : 0
-      };
-
-      groupsMemory.push(mockGroup);
-
-      return new Response(JSON.stringify({
-        success: true,
-        group: mockGroup
-      }), {
-        headers: { 'Content-Type': 'application/json' },
-      });
-    }
+    return new Response(JSON.stringify({
+      success: true,
+      group: newGroup,
+      message: 'Group created successfully'
+    }), {
+      headers: { 'Content-Type': 'application/json' },
+    });
   } catch (error) {
     console.error('Error creating group:', error);
     return new Response(JSON.stringify({

@@ -12,6 +12,7 @@ import {
   Image,
   Dimensions,
   Alert,
+  Platform,
 } from 'react-native';
 import { Plus, TrendingUp, CreditCard, DollarSign, ArrowUpRight, MessageCircle, Target, Calendar, Link, Zap } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
@@ -341,7 +342,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 100,
+    paddingBottom: Platform.OS === 'ios' ? 110 : 90,
   },
   header: {
     flexDirection: 'row',

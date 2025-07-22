@@ -1,5 +1,6 @@
 import { Tabs } from 'expo-router';
 import { Home, Layers, MessageCircle, User, BarChart3 } from 'lucide-react-native';
+import { Platform } from 'react-native';
 
 export default function TabLayout() {
   return (
@@ -12,18 +13,26 @@ export default function TabLayout() {
           backgroundColor: '#FFFFFF',
           borderTopWidth: 1,
           borderTopColor: '#F3F4F6',
-          paddingBottom: 8,
+          paddingBottom: Platform.OS === 'ios' ? 20 : 12,
           paddingTop: 8,
-          height: 70,
+          height: Platform.OS === 'ios' ? 85 : 65,
           shadowColor: '#000',
           shadowOffset: { width: 0, height: -2 },
           shadowOpacity: 0.1,
           shadowRadius: 8,
           elevation: 8,
+          position: 'absolute',
+          bottom: 0,
+          left: 0,
+          right: 0,
         },
         tabBarLabelStyle: {
-          fontSize: 12,
+          fontSize: 11,
           fontFamily: 'Inter-Medium',
+          marginTop: 2,
+          marginBottom: Platform.OS === 'ios' ? 0 : 4,
+        },
+        tabBarIconStyle: {
           marginTop: 4,
         },
       }}>
