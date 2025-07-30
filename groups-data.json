@@ -1,0 +1,86 @@
+[
+  {
+    "id": "group_001",
+    "name": "Foodie Friends",
+    "description": "Regular dining group for restaurants and food experiences",
+    "category": "dining",
+    "color": "#EF4444",
+    "memberCount": 3,
+    "user_id": "1",
+    "created_at": "2024-06-01T10:00:00Z"
+  },
+  {
+    "id": "group_002",
+    "name": "Commute Crew",
+    "description": "Transportation sharing for daily commutes",
+    "category": "transport",
+    "color": "#3B82F6",
+    "memberCount": 2,
+    "user_id": "1",
+    "created_at": "2024-06-02T15:30:00Z"
+  },
+  {
+    "id": "group_003",
+    "name": "House Mates",
+    "description": "Household expenses and utilities",
+    "category": "household",
+    "color": "#10B981",
+    "memberCount": 4,
+    "user_id": "1",
+    "created_at": "2024-06-03T09:15:00Z"
+  },
+  {
+    "id": "group_004",
+    "name": "Weekend Warriors",
+    "description": "Entertainment and social activities",
+    "category": "entertainment",
+    "color": "#8B5CF6",
+    "memberCount": 5,
+    "user_id": "1",
+    "created_at": "2024-06-04T18:45:00Z"
+  },
+  {
+    "id": "group_005",
+    "name": "Road Trip Crew",
+    "description": "Epic SFO to Moab adventure - sharing all travel, lodging, and activity costs",
+    "category": "travel",
+    "color": "#F59E0B",
+    "memberCount": 4,
+    "user_id": "1",
+    "created_at": "2024-03-08T12:00:00Z"
+  },
+  {
+    "id": "group_1753591615661",
+    "name": "Working Test Group",
+    "description": "Testing the file store",
+    "category": "other",
+    "color": "#6B7280",
+    "memberCount": 4,
+    "user_id": "1",
+    "created_at": "2025-07-27T04:46:55.661Z",
+    "balance": 0,
+    "totalSpent": 0,
+    "savings": 0,
+    "estimatedBudget": null,
+    "duration": null,
+    "destination": null,
+    "tripDate": null
+  },
+  {
+    "id": "group_642870",
+    "name": "Trip to Tokyo with",
+    "description": "5 days",
+    "category": "travel",
+    "color": "#F59E0B",
+    "memberCount": 4,
+    "user_id": "1",
+    "created_at": "2025-07-27T04:47:22.870Z",
+    "balance": 0,
+    "totalSpent": 0,
+    "savings": 0,
+    "estimatedBudget": 2000,
+    "duration": 5,
+    "destination": "Tokyo with",
+    "tripDate": "2025-08-26T04:47:22.870Z"
+  }
+]

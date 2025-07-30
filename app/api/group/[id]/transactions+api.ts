@@ -109,10 +109,74 @@ export async function GET(request: Request, context?: any) {
     });
 
   } catch (error) {
-    console.error('Error fetching group transactions:', error);
+          console.error('Error fetching group transactions:', error);
     return new Response(JSON.stringify({
       success: false,
       error: 'Failed to fetch group transactions'
+    }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' }
+    });
+  }
+}
+
+export async function POST(request: Request, context?: any) {
+  try {
+    // Extract group ID from URL path
+    const url = new URL(request.url);
+    const pathParts = url.pathname.split('/');
+    const groupId = pathParts[pathParts.indexOf('group') + 1];
+    
+    if (!groupId) {
+      return new Response(JSON.stringify({
+        success: false,
+        error: 'Group ID not found'
+      }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
+    const { description, amount, category, paidBy, participants, userId } = await request.json();
+
+    if (!description || !amount || !paidBy || !participants) {
+      return new Response(JSON.stringify({
+        success: false,
+        error: 'Missing required fields: description, amount, paidBy, participants'
+      }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
+    // Create new transaction
+    const newTransaction = {
+      id: 'tx_' + Date.now(),
+      description,
+      amount: parseFloat(amount),
+      date: new Date().toISOString(),
+      paidBy,
+      category: category || 'general',
+      participants,
+      status: 'completed',
+      groupId,
+      addedBy: userId || paidBy.id,
+      addedViaAgent: true // Flag to indicate this was added by AI agent
+    };
+
+    return new Response(JSON.stringify({
+      success: true,
+      transaction: newTransaction,
+      message: 'Expense added successfully to group'
+    }), {
+      headers: { 'Content-Type': 'application/json' }
+    });
+
+  } catch (error) {
+    console.error('Error adding group transaction:', error);
+    return new Response(JSON.stringify({
+      success: false,
+      error: 'Failed to add group transaction'
     }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' }

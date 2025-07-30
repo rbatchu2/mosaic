@@ -1,95 +1,19 @@
 import { supabaseService } from '../../services/supabaseService';
-
-// In-memory store when Supabase is unavailable
-export let groupsMemory: any[] = [
-  {
-    id: 'group_1',
-    name: 'Foodie Friends',
-    description: 'Our regular dining group',
-    category: 'dining',
-    color: '#EF4444',
-    memberCount: 4,
-  },
-  {
-    id: 'group_2',
-    name: 'Commute Crew',
-    description: 'Shared rides and transport',
-    category: 'transport',
-    color: '#3B82F6',
-    memberCount: 3,
-  },
-  {
-    id: 'group_3',
-    name: 'Roommates',
-    description: 'Shared household expenses',
-    category: 'household',
-    color: '#10B981',
-    memberCount: 3,
-  },
-];
+import { getGroups, addGroup } from './file-store';
 
 export async function GET(request: Request) {
   try {
     const url = new URL(request.url);
     const userId = url.searchParams.get('userId') || '00000000-0000-0000-0000-000000000001';
 
-    // Use mock expense groups instead of Supabase
-    const mockGroups = [
-      {
-        id: 'group_001',
-        name: 'Foodie Friends',
-        description: 'Regular dining group for restaurants and food experiences',
-        category: 'dining',
-        color: '#EF4444',
-        memberCount: 3,
-        user_id: userId,
-        created_at: '2024-06-01T10:00:00Z'
-      },
-      {
-        id: 'group_002',
-        name: 'Commute Crew',
-        description: 'Transportation sharing for daily commutes',
-        category: 'transport',
-        color: '#3B82F6',
-        memberCount: 2,
-        user_id: userId,
-        created_at: '2024-06-02T15:30:00Z'
-      },
-      {
-        id: 'group_003',
-        name: 'House Mates',
-        description: 'Household expenses and utilities',
-        category: 'household',
-        color: '#10B981',
-        memberCount: 4,
-        user_id: userId,
-        created_at: '2024-06-03T09:15:00Z'
-      },
-      {
-        id: 'group_004',
-        name: 'Weekend Warriors',
-        description: 'Entertainment and social activities',
-        category: 'entertainment',
-        color: '#8B5CF6',
-        memberCount: 5,
-        user_id: userId,
-        created_at: '2024-06-04T18:45:00Z'
-      },
-      {
-        id: 'group_005',
-        name: 'Road Trip Crew',
-        description: 'Epic SFO to Moab adventure - sharing all travel, lodging, and activity costs',
-        category: 'travel',
-        color: '#F59E0B',
-        memberCount: 4,
-        user_id: userId,
-        created_at: '2024-03-08T12:00:00Z'
-      }
-    ];
+    // Get groups from file store
+    const groups = await getGroups();
+    
+    console.log('Returning groups from API:', groups.length, groups.map(g => g.name));
 
     return new Response(JSON.stringify({
       success: true,
-      groups: mockGroups
+      groups: groups
     }), {
       headers: { 'Content-Type': 'application/json' },
     });
@@ -107,34 +31,66 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const { name, description, category, userId } = await request.json();
+    const { 
+      name, 
+      description, 
+      category, 
+      userId, 
+      memberCount, 
+      estimatedBudget, 
+      duration, 
+      destination 
+    } = await request.json();
 
-    if (!name || !description || !category || !userId) {
+    if (!name || !userId) {
       return new Response(JSON.stringify({
         success: false,
-        error: 'Missing required fields'
+        error: 'Name and userId are required'
       }), {
         status: 400,
         headers: { 'Content-Type': 'application/json' },
       });
     }
 
-    // Mock creating a new group
+    // Helper function to get category colors
+    const getCategoryColor = (cat: string): string => {
+      const colors: { [key: string]: string } = {
+        dining: '#EF4444',
+        transport: '#3B82F6', 
+        household: '#10B981',
+        entertainment: '#8B5CF6',
+        travel: '#F59E0B',
+        other: '#6B7280'
+      };
+      return colors[cat] || colors.other;
+    };
+
+    // Create new group with enhanced properties
     const newGroup = {
       id: 'group_' + Date.now(),
       name,
-      description,
-      category,
-      color: '#6B7280', // Default color
-      memberCount: 1,
+      description: description || `${category === 'travel' ? 'Trip to' : 'Group for'} ${name}`,
+      category: category || 'other',
+      color: getCategoryColor(category || 'other'),
+      memberCount: memberCount || 2,
       user_id: userId,
-      created_at: new Date().toISOString()
+      created_at: new Date().toISOString(),
+      balance: 0,
+      totalSpent: 0,
+      savings: 0,
+      estimatedBudget: estimatedBudget || null,
+      duration: duration || null,
+      destination: destination || null,
+      tripDate: category === 'travel' ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() : null
     };
+
+    // Add to file store
+    await addGroup(newGroup);
 
     return new Response(JSON.stringify({
       success: true,
       group: newGroup,
-      message: 'Group created successfully'
+      message: `Successfully created ${category === 'travel' ? 'trip' : 'group'}: ${name}${estimatedBudget ? ` with $${estimatedBudget} budget` : ''}`
     }), {
       headers: { 'Content-Type': 'application/json' },
     });

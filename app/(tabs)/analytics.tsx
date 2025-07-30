@@ -91,6 +91,8 @@ export default function AnalyticsScreen() {
         </View>
       </View>
 
+
+
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {/* Key Metrics */}
         <View style={styles.section}>
@@ -243,7 +245,7 @@ export default function AnalyticsScreen() {
           </View>
         </View>
 
-        {/* Bottom Padding */}
+                    {/* Bottom Padding */}
         <View style={styles.bottomPadding} />
       </ScrollView>
     </SafeAreaView>
@@ -588,5 +590,201 @@ const styles = StyleSheet.create({
   },
   bottomPadding: {
     height: 20,
+  },
+  // Tab styles
+  tabNavigation: {
+    flexDirection: 'row',
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  tabButton: {
+    flex: 1,
+    paddingVertical: 12,
+    alignItems: 'center',
+    marginHorizontal: 4,
+    borderRadius: 12,
+    backgroundColor: '#F9FAFB',
+  },
+  activeTabButton: {
+    backgroundColor: '#EBF8FF',
+  },
+  tabButtonText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#6B7280',
+    fontFamily: 'Inter-Medium',
+  },
+  activeTabButtonText: {
+    color: '#0EA5E9',
+  },
+  // Forecasting styles
+  forecastingContent: {
+    flex: 1,
+  },
+  cashFlowCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  cashFlowHeader: {
+    alignItems: 'center',
+  },
+  cashFlowAmount: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: '#1F2937',
+    fontFamily: 'Inter-Bold',
+    marginBottom: 4,
+  },
+  cashFlowLabel: {
+    fontSize: 14,
+    color: '#6B7280',
+    fontFamily: 'Inter-Medium',
+    marginBottom: 8,
+  },
+  confidenceText: {
+    fontSize: 12,
+    color: '#0EA5E9',
+    fontFamily: 'Inter-Medium',
+  },
+  alertCard: {
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    borderLeftWidth: 4,
+    borderLeftColor: '#0EA5E9',
+  },
+  alertHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  alertType: {
+    fontSize: 11,
+    fontWeight: '700',
+    fontFamily: 'Inter-Bold',
+    marginLeft: 6,
+  },
+  alertMessage: {
+    fontSize: 14,
+    color: '#374151',
+    fontFamily: 'Inter-Medium',
+    marginBottom: 4,
+  },
+  alertAction: {
+    fontSize: 12,
+    color: '#6B7280',
+    fontFamily: 'Inter-Regular',
+  },
+  forecastCategoryCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  forecastCategoryHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  forecastCategoryName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1F2937',
+    fontFamily: 'Inter-SemiBold',
+    textTransform: 'capitalize',
+  },
+  forecastTrend: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  forecastTrendText: {
+    fontSize: 12,
+    fontWeight: '500',
+    fontFamily: 'Inter-Medium',
+    textTransform: 'capitalize',
+  },
+  forecastAmounts: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  forecastAmountItem: {
+    flex: 1,
+  },
+  forecastAmountLabel: {
+    fontSize: 12,
+    color: '#6B7280',
+    fontFamily: 'Inter-Medium',
+    marginBottom: 4,
+  },
+  forecastAmountValue: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#1F2937',
+    fontFamily: 'Inter-Bold',
+  },
+  forecastArrow: {
+    paddingHorizontal: 12,
+  },
+  forecastArrowText: {
+    fontSize: 16,
+    color: '#9CA3AF',
+  },
+  forecastInsightCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  forecastInsightHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  forecastInsightTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1F2937',
+    fontFamily: 'Inter-SemiBold',
+    marginLeft: 8,
+  },
+  forecastInsightText: {
+    fontSize: 14,
+    color: '#4B5563',
+    fontFamily: 'Inter-Regular',
+    marginBottom: 6,
+    lineHeight: 20,
+  },
+  timestampContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    marginVertical: 20,
+  },
+  timestampText: {
+    fontSize: 12,
+    color: '#9CA3AF',
+    fontFamily: 'Inter-Regular',
   },
 }); 

@@ -290,8 +290,10 @@ class OpenAIService {
             
             FORMATTING GUIDELINES:
             - Use **text** for bold/important information (like costs, totals, key numbers)
-            - Structure responses with clear sections and bullet points
+            - Structure responses with clear paragraphs and bullet points
             - Make financial amounts and key metrics stand out with bold formatting
+            - DO NOT use markdown headers (### or ##) - use plain text section titles followed by colons
+            - Use simple line breaks and bullet points for organization
             
             CRITICAL: Respond ONLY with valid JSON. Do not include any text before or after the JSON. Use double quotes for all strings and property names.
             
