@@ -22,7 +22,12 @@ import {
   ChevronRight,
   Clock,
   CheckCircle,
-  XCircle
+  XCircle,
+  PiggyBank,
+  Target,
+  AlertCircle,
+  Lightbulb,
+  Zap
 } from 'lucide-react-native';
 import { formatRelativeTime } from '../../utils/dateUtils';
 
@@ -65,7 +70,66 @@ export default function GroupDetailScreen() {
   const [splitRequests, setSplitRequests] = useState<SplitRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [activeTab, setActiveTab] = useState<'overview' | 'transactions' | 'balances' | 'splits'>('overview');
+
+  // Savings goals state
+  interface SavingsGoal {
+    id: string;
+    groupId: string;
+    name: string;
+    description: string;
+    targetAmount: number;
+    currentAmount: number;
+    targetDate: string;
+    category: 'vacation' | 'house' | 'emergency' | 'event' | 'other';
+    participants: {
+      userId: string;
+      name: string;
+      contributionTarget: number;
+      contributedAmount: number;
+    }[];
+    aiInsights: {
+      monthlyTarget: number;
+      completionProbability: number;
+      suggestions: string[];
+    };
+  }
+
+  // Group forecast state
+  interface GroupForecast {
+    groupId: string;
+    groupName: string;
+    forecastPeriod: '1M' | '3M' | '6M' | '1Y';
+    generatedAt: string;
+    cashFlow: {
+      projectedIncome: number;
+      projectedExpenses: number;
+      netFlow: number;
+      confidence: number;
+    };
+    spendingForecast: {
+      category: string;
+      currentMonthly: number;
+      projectedMonthly: number;
+      trend: 'increasing' | 'decreasing' | 'stable';
+      confidence: number;
+    }[];
+    aiInsights: {
+      riskFactors: string[];
+      opportunities: string[];
+      recommendations: string[];
+      seasonalTrends: string[];
+    };
+    smartAlerts: {
+      type: 'warning' | 'opportunity' | 'milestone';
+      message: string;
+      action: string;
+    }[];
+  }
+
+  const [savingsGoals, setSavingsGoals] = useState<SavingsGoal[]>([]);
+  const [forecast, setForecast] = useState<GroupForecast | null>(null);
+  const [forecastPeriod, setForecastPeriod] = useState<'1M' | '3M' | '6M' | '1Y'>('3M');
+  const [activeTab, setActiveTab] = useState<'overview' | 'transactions' | 'balances' | 'splits' | 'savings' | 'forecasting'>('overview');
 
   const fetchGroupData = async () => {
     try {
@@ -97,6 +161,20 @@ export default function GroupDetailScreen() {
       const splitsData = await splitsRes.json();
       if (splitsData.success) {
         setSplitRequests(splitsData.splits);
+      }
+
+      // Fetch group savings goals
+      const savingsRes = await fetch(`/api/groups/savings?groupId=${id}&userId=00000000-0000-0000-0000-000000000001`);
+      const savingsData = await savingsRes.json();
+      if (savingsData.success) {
+        setSavingsGoals(savingsData.goals);
+      }
+
+      // Fetch group forecast
+      const forecastRes = await fetch(`/api/groups/forecasting?groupId=${id}&period=${forecastPeriod}&userId=00000000-0000-0000-0000-000000000001`);
+      const forecastData = await forecastRes.json();
+      if (forecastData.success) {
+        setForecast(forecastData.forecast);
       }
 
     } catch (err) {
@@ -168,6 +246,98 @@ export default function GroupDetailScreen() {
           createdAt: '2024-01-12T08:20:00Z'
         }
       ]);
+
+      // Mock savings goals for this group
+      setSavingsGoals([
+        {
+          id: 'goal_group_001',
+          groupId: id as string,
+          name: `${group?.name || 'Group'} Vacation Fund`,
+          description: 'Shared savings for our next group adventure',
+          targetAmount: 2400,
+          currentAmount: 890,
+          targetDate: '2024-08-15',
+          category: 'vacation',
+          participants: [
+            { userId: '1', name: 'You', contributionTarget: 600, contributedAmount: 250 },
+            { userId: '2', name: 'Sarah', contributionTarget: 600, contributedAmount: 280 },
+            { userId: '3', name: 'Mike', contributionTarget: 600, contributedAmount: 180 },
+            { userId: '4', name: 'Emma', contributionTarget: 600, contributedAmount: 180 }
+          ],
+          aiInsights: {
+            monthlyTarget: 380,
+            completionProbability: 0.75,
+            suggestions: [
+              'Set up auto-transfers of $95/week per person',
+              'Track group dining expenses for budget optimization',
+              'Consider shared investment account for better returns'
+            ]
+          }
+        }
+      ]);
+
+      // Mock forecast for this group
+      setForecast({
+        groupId: id as string,
+        groupName: group?.name || 'Group',
+        forecastPeriod: forecastPeriod,
+        generatedAt: new Date().toISOString(),
+        cashFlow: {
+          projectedIncome: 0,
+          projectedExpenses: 1240,
+          netFlow: -1240,
+          confidence: 0.78
+        },
+        spendingForecast: [
+          {
+            category: 'dining',
+            currentMonthly: 744,
+            projectedMonthly: 780,
+            trend: 'increasing',
+            confidence: 0.82
+          },
+          {
+            category: 'transport',
+            currentMonthly: 372,
+            projectedMonthly: 360,
+            trend: 'decreasing',
+            confidence: 0.75
+          },
+          {
+            category: 'entertainment',
+            currentMonthly: 124,
+            projectedMonthly: 140,
+            trend: 'increasing',
+            confidence: 0.65
+          }
+        ],
+        aiInsights: {
+          riskFactors: [
+            'Dining expenses trending upward by 5% this quarter',
+            'Group size fluctuation affects per-person costs'
+          ],
+          opportunities: [
+            'Bulk meal planning could save 15% on dining',
+            'Group transportation bookings show cost efficiency'
+          ],
+          recommendations: [
+            'Set monthly spending limit of $1,200 for better control',
+            'Track group activities to optimize shared costs',
+            'Consider group meal prep sessions'
+          ],
+          seasonalTrends: [
+            'Summer months typically see 20% higher activity',
+            'Holiday periods show increased entertainment spending'
+          ]
+        },
+        smartAlerts: [
+          {
+            type: 'opportunity',
+            message: 'Group spending efficiency is 87% - above average!',
+            action: 'Consider increasing shared savings goals'
+          }
+        ]
+      });
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -280,9 +450,11 @@ export default function GroupDetailScreen() {
         <View style={styles.tabContainer}>
           {[
             { key: 'overview', label: 'Overview' },
+            { key: 'savings', label: 'Savings' },
             { key: 'transactions', label: 'Transactions' },
             { key: 'balances', label: 'Balances' },
-            { key: 'splits', label: 'Splits' }
+            { key: 'splits', label: 'Splits' },
+            { key: 'forecasting', label: 'Forecast' }
           ].map(tab => (
             <TouchableOpacity
               key={tab.key}
@@ -478,6 +650,251 @@ export default function GroupDetailScreen() {
                   <Text style={styles.emptyStateText}>All caught up!</Text>
                   <Text style={styles.emptyStateSubtext}>No pending split requests</Text>
                 </View>
+              )}
+            </View>
+          </View>
+        )}
+
+        {activeTab === 'savings' && (
+          <View style={styles.tabContent}>
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>Savings Goals</Text>
+                <TouchableOpacity onPress={() => Alert.alert('Add Goal', 'Create new shared savings goal coming soon!')}>
+                  <Plus size={16} color="#0EA5E9" />
+                </TouchableOpacity>
+              </View>
+              
+              {savingsGoals.length === 0 ? (
+                <View style={styles.emptyState}>
+                  <PiggyBank size={32} color="#9CA3AF" />
+                  <Text style={styles.emptyStateText}>No Savings Goals Yet</Text>
+                  <Text style={styles.emptyStateSubtext}>Create shared goals to save together</Text>
+                </View>
+              ) : (
+                savingsGoals.map((goal) => {
+                  const progress = Math.min((goal.currentAmount / goal.targetAmount) * 100, 100);
+                  const daysLeft = Math.ceil((new Date(goal.targetDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
+                  
+                  const getCategoryIcon = (category: string) => {
+                    switch (category) {
+                      case 'vacation': return '🌎';
+                      case 'house': return '🏡';
+                      case 'emergency': return '🚨';
+                      case 'event': return '🎉';
+                      default: return '💰';
+                    }
+                  };
+
+                  const categoryColor = '#0EA5E9'; // Always blue
+
+                  return (
+                    <View key={goal.id} style={styles.savingsGoalCard}>
+                      {/* Goal Header */}
+                      <View style={styles.goalHeader}>
+                        <View style={styles.goalHeaderLeft}>
+                          <Text style={styles.goalEmoji}>{getCategoryIcon(goal.category)}</Text>
+                          <View style={styles.goalInfo}>
+                            <Text style={styles.goalName}>{goal.name}</Text>
+                            <Text style={styles.goalMeta}>
+                              {goal.participants.length} people • {daysLeft > 0 ? `${daysLeft} days left` : 'Goal reached!'}
+                            </Text>
+                          </View>
+                        </View>
+                        <View style={styles.goalAmountSection}>
+                          <Text style={styles.goalAmount}>
+                            ${goal.currentAmount.toLocaleString()}
+                          </Text>
+                          <Text style={styles.goalTarget}>
+                            of ${goal.targetAmount.toLocaleString()}
+                          </Text>
+                        </View>
+                      </View>
+
+                      {/* Progress Bar */}
+                      <View style={styles.progressContainer}>
+                        <View style={styles.progressBar}>
+                          <View 
+                            style={[
+                              styles.progressFill, 
+                              { width: `${progress}%`, backgroundColor: categoryColor }
+                            ]} 
+                          />
+                        </View>
+                        <Text style={styles.progressText}>
+                          {progress.toFixed(0)}% complete
+                        </Text>
+                      </View>
+
+                      {/* AI Insights */}
+                      <View style={styles.aiInsightsRow}>
+                        <View style={styles.insightItem}>
+                          <Text style={styles.insightValue}>
+                            ${goal.aiInsights.monthlyTarget}/mo
+                          </Text>
+                          <Text style={styles.insightLabel}>needed</Text>
+                        </View>
+                        <View style={styles.insightItem}>
+                          <Text style={[styles.insightValue, {
+                            color: goal.aiInsights.completionProbability > 0.7 ? '#10B981' :
+                                   goal.aiInsights.completionProbability > 0.4 ? '#F59E0B' : '#EF4444'
+                          }]}>
+                            {Math.round(goal.aiInsights.completionProbability * 100)}%
+                          </Text>
+                          <Text style={styles.insightLabel}>likely</Text>
+                        </View>
+                        <TouchableOpacity style={[styles.contributeBtn, { backgroundColor: categoryColor }]}>
+                          <Text style={styles.contributeBtnText}>Contribute</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  );
+                })
+              )}
+            </View>
+          </View>
+        )}
+
+        {activeTab === 'forecasting' && (
+          <View style={styles.tabContent}>
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>Budget Forecast</Text>
+                <View style={styles.periodSelector}>
+                  {(['1M', '3M', '6M', '1Y'] as const).map((period) => (
+                    <TouchableOpacity
+                      key={period}
+                      style={[styles.periodButton, forecastPeriod === period && styles.selectedPeriod]}
+                      onPress={() => setForecastPeriod(period)}
+                    >
+                      <Text style={[styles.periodText, forecastPeriod === period && styles.selectedPeriodText]}>
+                        {period}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              {!forecast ? (
+                <View style={styles.emptyState}>
+                  <TrendingUp size={32} color="#9CA3AF" />
+                  <Text style={styles.emptyStateText}>Generating Forecast...</Text>
+                  <Text style={styles.emptyStateSubtext}>AI analysis in progress</Text>
+                </View>
+              ) : (
+                <>
+                  {/* Cash Flow Overview */}
+                  <View style={styles.forecastCard}>
+                    <View style={styles.forecastHeader}>
+                      <Text style={styles.forecastTitle}>Net Cash Flow ({forecastPeriod})</Text>
+                      <Text style={styles.forecastAmount}>
+                        ${forecast.cashFlow.netFlow.toLocaleString()}
+                      </Text>
+                      <Text style={styles.confidenceText}>
+                        {Math.round(forecast.cashFlow.confidence * 100)}% confidence
+                      </Text>
+                    </View>
+                  </View>
+
+                  {/* Smart Alerts */}
+                  {forecast.smartAlerts.length > 0 && (
+                    <View style={styles.alertsSection}>
+                      <Text style={styles.alertsTitle}>Smart Alerts</Text>
+                      {forecast.smartAlerts.map((alert, index) => (
+                        <View key={index} style={[styles.alertCard, {
+                          backgroundColor: alert.type === 'warning' ? '#FEF2F2' : 
+                                          alert.type === 'opportunity' ? '#F0FDF4' : '#FEF3C7'
+                        }]}>
+                          <View style={styles.alertHeader}>
+                            {alert.type === 'warning' && <AlertCircle size={14} color="#DC2626" />}
+                            {alert.type === 'opportunity' && <Lightbulb size={14} color="#16A34A" />}
+                            {alert.type === 'milestone' && <Target size={14} color="#D97706" />}
+                            <Text style={[styles.alertType, {
+                              color: alert.type === 'warning' ? '#DC2626' : 
+                                     alert.type === 'opportunity' ? '#16A34A' : '#D97706'
+                            }]}>
+                              {alert.type.toUpperCase()}
+                            </Text>
+                          </View>
+                          <Text style={styles.alertMessage}>{alert.message}</Text>
+                        </View>
+                      ))}
+                    </View>
+                  )}
+
+                  {/* Category Forecasts */}
+                  <View style={styles.categorySection}>
+                    <Text style={styles.categoryTitle}>Category Forecasts</Text>
+                    {forecast.spendingForecast.map((category, index) => (
+                      <View key={index} style={styles.categoryCard}>
+                        <View style={styles.categoryHeader}>
+                          <Text style={styles.categoryName}>{category.category}</Text>
+                          <View style={styles.categoryTrend}>
+                            {category.trend === 'increasing' && <TrendingUp size={12} color="#EF4444" />}
+                            {category.trend === 'decreasing' && <ArrowDownRight size={12} color="#10B981" />}
+                            {category.trend === 'stable' && <Receipt size={12} color="#6B7280" />}
+                            <Text style={[styles.trendText, {
+                              color: category.trend === 'increasing' ? '#EF4444' : 
+                                     category.trend === 'decreasing' ? '#10B981' : '#6B7280'
+                            }]}>
+                              {category.trend}
+                            </Text>
+                          </View>
+                        </View>
+                        
+                        <View style={styles.categoryAmounts}>
+                          <View style={styles.amountItem}>
+                            <Text style={styles.amountLabel}>Current</Text>
+                            <Text style={styles.amountValue}>
+                              ${category.currentMonthly}/mo
+                            </Text>
+                          </View>
+                          <Text style={styles.amountArrow}>→</Text>
+                          <View style={styles.amountItem}>
+                            <Text style={styles.amountLabel}>Projected</Text>
+                            <Text style={[styles.amountValue, {
+                              color: category.projectedMonthly > category.currentMonthly ? '#EF4444' : '#10B981'
+                            }]}>
+                              ${category.projectedMonthly}/mo
+                            </Text>
+                          </View>
+                        </View>
+                      </View>
+                    ))}
+                  </View>
+
+                  {/* AI Insights */}
+                  <View style={styles.aiInsightsSection}>
+                    <Text style={styles.aiInsightsTitle}>AI Insights</Text>
+                    
+                    <View style={styles.insightCard}>
+                      <View style={styles.insightHeader}>
+                        <Lightbulb size={16} color="#F59E0B" />
+                        <Text style={styles.insightTitle}>Recommendations</Text>
+                      </View>
+                      {forecast.aiInsights.recommendations.map((rec, index) => (
+                        <Text key={index} style={styles.insightText}>• {rec}</Text>
+                      ))}
+                    </View>
+
+                    <View style={styles.insightCard}>
+                      <View style={styles.insightHeader}>
+                        <AlertCircle size={16} color="#EF4444" />
+                        <Text style={styles.insightTitle}>Risk Factors</Text>
+                      </View>
+                      {forecast.aiInsights.riskFactors.map((risk, index) => (
+                        <Text key={index} style={styles.insightText}>• {risk}</Text>
+                      ))}
+                    </View>
+                  </View>
+
+                  <View style={styles.timestampContainer}>
+                    <Clock size={12} color="#9CA3AF" />
+                    <Text style={styles.timestampText}>
+                      Generated {new Date(forecast.generatedAt).toLocaleString()}
+                    </Text>
+                  </View>
+                </>
               )}
             </View>
           </View>
@@ -876,5 +1293,397 @@ const styles = StyleSheet.create({
   },
   bottomPadding: {
     height: 20,
+  },
+  // Savings styles
+  savingsGoalCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  goalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  goalHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  goalEmoji: {
+    fontSize: 24,
+    marginRight: 12,
+  },
+  goalInfo: {
+    flex: 1,
+  },
+  goalName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1F2937',
+    fontFamily: 'Inter-SemiBold',
+    marginBottom: 4,
+  },
+  goalMeta: {
+    fontSize: 12,
+    color: '#6B7280',
+    fontFamily: 'Inter-Regular',
+  },
+  goalAmountSection: {
+    alignItems: 'flex-end',
+  },
+  goalAmount: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1F2937',
+    fontFamily: 'Inter-Bold',
+  },
+  goalTarget: {
+    fontSize: 12,
+    color: '#9CA3AF',
+    fontFamily: 'Inter-Regular',
+  },
+  progressContainer: {
+    marginBottom: 16,
+  },
+  progressBar: {
+    height: 8,
+    backgroundColor: '#F3F4F6',
+    borderRadius: 4,
+    overflow: 'hidden',
+    marginBottom: 8,
+  },
+  progressFill: {
+    height: '100%',
+    borderRadius: 4,
+  },
+  progressText: {
+    fontSize: 12,
+    color: '#6B7280',
+    fontFamily: 'Inter-Medium',
+    textAlign: 'center',
+  },
+  aiInsightsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  insightItem: {
+    alignItems: 'center',
+  },
+  insightValue: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1F2937',
+    fontFamily: 'Inter-SemiBold',
+  },
+  insightLabel: {
+    fontSize: 11,
+    color: '#9CA3AF',
+    fontFamily: 'Inter-Regular',
+    marginTop: 2,
+  },
+  contributeBtn: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+      contributeBtnText: {
+      fontSize: 13,
+      fontWeight: '600',
+      color: '#FFFFFF',
+      fontFamily: 'Inter-SemiBold',
+    },
+    // Savings Summary Styles
+    savingsSummary: {
+      backgroundColor: '#FFFFFF',
+      borderRadius: 12,
+      padding: 16,
+      marginHorizontal: 16,
+      marginBottom: 16,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.08,
+      shadowRadius: 8,
+      elevation: 3,
+    },
+    savingsSummaryHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: 12,
+    },
+    savingsSummaryTitle: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: '#1F2937',
+      fontFamily: 'Inter-SemiBold',
+    },
+    savingsOverview: {
+      gap: 12,
+    },
+    savingsPreviewCard: {
+      backgroundColor: '#F8FAFC',
+      borderRadius: 8,
+      padding: 12,
+      borderLeftWidth: 3,
+      borderLeftColor: '#0EA5E9',
+    },
+    savingsPreviewHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginBottom: 8,
+    },
+    savingsPreviewEmoji: {
+      fontSize: 16,
+      marginRight: 8,
+    },
+    savingsPreviewInfo: {
+      flex: 1,
+    },
+    savingsPreviewName: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: '#1F2937',
+      fontFamily: 'Inter-SemiBold',
+      marginBottom: 2,
+    },
+    savingsPreviewAmount: {
+      fontSize: 12,
+      color: '#6B7280',
+      fontFamily: 'Inter-Regular',
+    },
+    savingsPreviewProgress: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: '#0EA5E9',
+      fontFamily: 'Inter-SemiBold',
+    },
+    savingsPreviewBar: {
+      height: 4,
+      backgroundColor: '#E5E7EB',
+      borderRadius: 2,
+      overflow: 'hidden',
+    },
+    savingsPreviewFill: {
+      height: '100%',
+      backgroundColor: '#0EA5E9',
+      borderRadius: 2,
+    },
+  insightText: {
+    fontSize: 14,
+    color: '#4B5563',
+    fontFamily: 'Inter-Regular',
+    marginBottom: 6,
+    lineHeight: 20,
+  },
+  // Forecasting styles
+  periodSelector: {
+    flexDirection: 'row',
+    gap: 4,
+  },
+  periodButton: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    backgroundColor: '#F3F4F6',
+  },
+  selectedPeriod: {
+    backgroundColor: '#0EA5E9',
+  },
+  periodText: {
+    fontSize: 11,
+    fontWeight: '500',
+    color: '#6B7280',
+    fontFamily: 'Inter-Medium',
+  },
+  selectedPeriodText: {
+    color: '#FFFFFF',
+  },
+  forecastCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  forecastHeader: {
+    alignItems: 'center',
+  },
+  forecastTitle: {
+    fontSize: 14,
+    color: '#6B7280',
+    fontFamily: 'Inter-Medium',
+    marginBottom: 6,
+  },
+  forecastAmount: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: '#1F2937',
+    fontFamily: 'Inter-Bold',
+    marginBottom: 4,
+  },
+  confidenceText: {
+    fontSize: 11,
+    color: '#0EA5E9',
+    fontFamily: 'Inter-Medium',
+  },
+  alertsSection: {
+    marginBottom: 16,
+  },
+  alertsTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1F2937',
+    fontFamily: 'Inter-SemiBold',
+    marginBottom: 10,
+  },
+  alertCard: {
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 8,
+    borderLeftWidth: 3,
+    borderLeftColor: '#0EA5E9',
+  },
+  alertHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  alertType: {
+    fontSize: 10,
+    fontWeight: '700',
+    fontFamily: 'Inter-Bold',
+    marginLeft: 4,
+  },
+  alertMessage: {
+    fontSize: 13,
+    color: '#374151',
+    fontFamily: 'Inter-Medium',
+  },
+  categorySection: {
+    marginBottom: 16,
+  },
+  categoryTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1F2937',
+    fontFamily: 'Inter-SemiBold',
+    marginBottom: 10,
+  },
+  categoryCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  categoryHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  categoryName: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1F2937',
+    fontFamily: 'Inter-SemiBold',
+    textTransform: 'capitalize',
+  },
+  categoryTrend: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+  },
+  trendText: {
+    fontSize: 11,
+    fontWeight: '500',
+    fontFamily: 'Inter-Medium',
+    textTransform: 'capitalize',
+  },
+  categoryAmounts: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  amountItem: {
+    flex: 1,
+  },
+  amountLabel: {
+    fontSize: 11,
+    color: '#6B7280',
+    fontFamily: 'Inter-Medium',
+    marginBottom: 2,
+  },
+  amountValue: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#1F2937',
+    fontFamily: 'Inter-Bold',
+  },
+  amountArrow: {
+    fontSize: 14,
+    color: '#9CA3AF',
+    paddingHorizontal: 8,
+  },
+  aiInsightsSection: {
+    marginBottom: 16,
+  },
+  aiInsightsTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1F2937',
+    fontFamily: 'Inter-SemiBold',
+    marginBottom: 10,
+  },
+  insightCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  insightHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  insightTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1F2937',
+    fontFamily: 'Inter-SemiBold',
+    marginLeft: 6,
+  },
+  timestampContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    marginVertical: 16,
+  },
+  timestampText: {
+    fontSize: 11,
+    color: '#9CA3AF',
+    fontFamily: 'Inter-Regular',
   },
 }); 

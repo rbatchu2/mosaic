@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { usePlaidTransactions, useSpendingAnalysis } from '../../hooks/usePlaid';
+import { usePlaidTransactions } from '../../hooks/usePlaid';
 import { formatRelativeTime } from '../../utils/dateUtils';
 import {
   View,
@@ -10,9 +10,11 @@ import {
   SafeAreaView,
   Alert,
   Platform,
+  RefreshControl,
 } from 'react-native';
-import { Plus, Brain, Check, X, DollarSign, MapPin, ArrowUpRight, Edit3, Zap, Users, Utensils, Car, Home, Film, Plane, Tag } from 'lucide-react-native';
+import { Plus, Brain, Check, X, DollarSign, MapPin, ArrowUpRight, Edit3, Zap, Users, Utensils, Car, Home, Film, Plane, Tag, TrendingUp, PiggyBank } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
+import { useFocusEffect } from '@react-navigation/native';
 
 interface SplitSuggestion {
   id: string;
@@ -41,6 +43,21 @@ interface SplitSuggestion {
   status: 'pending' | 'accepted' | 'rejected';
 }
 
+// Groups state
+interface Group {
+  id: string;
+  name: string;
+  description: string;
+  category: string;
+  color: string;
+  memberCount: number;
+  balance?: number; // Your balance in this group (positive = owed money, negative = you owe)
+  totalSpent?: number; // Total group spending
+  savings?: number; // Group savings amount
+  tripDate?: string; // For travel groups
+  createdDate?: string; // When group was created
+}
+
 export default function WalletsScreen() {
   const router = useRouter();
   const userId = '1';
@@ -48,16 +65,6 @@ export default function WalletsScreen() {
   // Plaid transactions for Suggestions & Activity tabs
   const { data: transactionsData, loading: transactionsLoading, refetch } =
     usePlaidTransactions(userId, undefined, 20);
-
-  // Groups state
-  interface Group {
-    id: string;
-    name: string;
-    description: string;
-    category: string;
-    color: string;
-    memberCount: number;
-  }
 
   const CATEGORY_OPTIONS = {
     dining: { label: 'Dining & Food', color: '#EF4444' },
@@ -79,23 +86,143 @@ export default function WalletsScreen() {
 
   const [groups, setGroups] = useState<Group[]>([]);
   const [groupsLoading, setGroupsLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
-  useEffect(() => {
-    const fetchGroups = async () => {
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await fetchGroups();
+    setRefreshing(false);
+  };
+
+  const fetchGroups = async () => {
       try {
-        const res = await fetch('/api/groups?userId=00000000-0000-0000-0000-000000000001');
-        const data = await res.json();
-        if (data.success) {
-          setGroups(data.groups);
+        setGroupsLoading(true);
+        console.log('🔄 Wallets: Fetching groups from API...');
+        
+        // Fetch actual groups from API
+        const response = await fetch('/api/groups?userId=1');
+        const result = await response.json();
+        
+        console.log('📡 Wallets: API Response:', result);
+        
+        if (result.success && result.groups) {
+          console.log('✅ Wallets: API returned groups:', result.groups.length, result.groups.map((g: any) => g.name));
+          
+          // Add financial data to API groups (since the API groups don't have it yet)
+          const groupsWithFinancials = result.groups.map((group: any, index: number) => {
+            const mockFinancials = [
+              { balance: 127.45, totalSpent: 2847.80, savings: 1250 },
+              { balance: -85.60, totalSpent: 1892.45, savings: 2400 },
+              { balance: 156.30, totalSpent: 1876.50, savings: 1100 },
+              { balance: 234.75, totalSpent: 1634.90, savings: 890 },
+              { balance: -43.20, totalSpent: 956.30, savings: 675 }
+            ];
+            
+            const financials = mockFinancials[index % mockFinancials.length];
+            
+            return {
+              ...group,
+              balance: financials.balance,
+              totalSpent: financials.totalSpent,
+              savings: financials.savings,
+              createdDate: group.created_at ? group.created_at.split('T')[0] : '2024-01-15'
+            };
+          });
+          
+          console.log('✅ Wallets: Successfully loaded groups:', groupsWithFinancials.length, groupsWithFinancials.map((g: any) => g.name));
+          setGroups(groupsWithFinancials);
+          
+          // Show alert with newest group
+          if (groupsWithFinancials.length > 5) {
+            const newestGroup = groupsWithFinancials[groupsWithFinancials.length - 1];
+            console.log('🆕 Wallets: Newest group detected:', newestGroup.name);
+          }
+        } else {
+          console.log('API failed, using fallback mock data');
+          // Fallback to mock data if API fails
+          const mockGroups = [
+            {
+              id: 'group_001',
+              name: 'Foodie Friends',
+              description: 'Weekly dinner adventures',
+              category: 'dining',
+              color: '#EF4444',
+              memberCount: 4,
+              balance: 127.45,
+              totalSpent: 2847.80,
+              savings: 1250,
+              createdDate: '2024-01-15'
+            },
+            {
+              id: 'group_002', 
+              name: 'House Squad',
+              description: 'Shared household expenses',
+              category: 'household',
+              color: '#10B981',
+              memberCount: 3,
+              balance: -85.60,
+              totalSpent: 1892.45,
+              savings: 2400,
+              createdDate: '2024-02-01'
+            },
+            {
+              id: 'group_003',
+              name: 'SFO to Moab Trip',
+              description: 'Epic road trip adventure',
+              category: 'travel',
+              color: '#F59E0B',
+              memberCount: 4,
+              balance: 156.30,
+              totalSpent: 1876.50,
+              savings: 1100,
+              tripDate: '2024-04-15',
+              createdDate: '2024-01-20'
+            },
+            {
+              id: 'group_004',
+              name: 'Road Trip Crew',
+              description: 'Gas, tolls, and snacks',
+              category: 'transport',
+              color: '#3B82F6',
+              memberCount: 5,
+              balance: 234.75,
+              totalSpent: 1634.90,
+              savings: 890,
+              createdDate: '2024-02-10'
+            },
+            {
+              id: 'group_005',
+              name: 'Weekend Warriors',
+              description: 'Entertainment and activities',
+              category: 'entertainment',
+              color: '#8B5CF6',
+              memberCount: 6,
+              balance: -43.20,
+              totalSpent: 956.30,
+              savings: 675,
+              createdDate: '2024-01-25'
+            }
+          ];
+          setGroups(mockGroups);
         }
-      } catch (err) {
-        console.error('Fetch groups error:', err);
-      } finally {
+        
+        setGroupsLoading(false);
+      } catch (error) {
+        console.error('Error fetching groups:', error);
         setGroupsLoading(false);
       }
-    };
+  };
+
+  useEffect(() => {
     fetchGroups();
   }, []);
+
+  // Refresh groups when tab comes into focus (to show newly created groups)
+  useFocusEffect(
+    React.useCallback(() => {
+      fetchGroups();
+    }, [])
+  );
   
   const [activeTab, setActiveTab] = useState<'groups' | 'suggestions' | 'activity'>('groups');
   
@@ -104,6 +231,8 @@ export default function WalletsScreen() {
   // Real AI split suggestions state
   const [splitSuggestions, setSplitSuggestions] = useState<SplitSuggestion[]>([]);
   const [suggestionsLoading, setSuggestionsLoading] = useState(true);
+
+
 
     // Fetch real AI split suggestions
   useEffect(() => {
@@ -158,6 +287,8 @@ export default function WalletsScreen() {
     }
   }, [transactions]);
 
+
+
   const handleAcceptSplit = (suggestion: SplitSuggestion) => {
     Alert.alert('Split Accepted', `Split request sent to ${suggestion.matchedGroup.name} members!`);
     refetch();
@@ -186,29 +317,52 @@ export default function WalletsScreen() {
             <Text style={styles.headerTitle}>Smart Groups</Text>
             <Text style={styles.headerSubtitle}>AI-powered expense splitting</Text>
           </View>
-          <TouchableOpacity 
-            style={styles.createButton}
-            onPress={() => router.push('/groups')}
-          >
-            <Plus size={20} color="#FFFFFF" />
-          </TouchableOpacity>
+          <View style={styles.headerButtons}>
+            <TouchableOpacity 
+              style={styles.refreshButton}
+              onPress={fetchGroups}
+            >
+              <Text style={styles.refreshText}>↻</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.createButton}
+              onPress={() => router.push('/groups')}
+            >
+              <Plus size={20} color="#FFFFFF" />
+            </TouchableOpacity>
+          </View>
         </View>
 
-        {/* AI Insights Banner */}
-        <View style={styles.insightsBanner}>
-          <View style={styles.insightsIcon}>
-            <Brain size={20} color="#0EA5E9" />
+        {/* Balance Overview */}
+        {!groupsLoading && groups.length > 0 && (
+          <View style={styles.balanceOverview}>
+            <View style={styles.overviewCard}>
+              <View style={styles.overviewItem}>
+                <TrendingUp size={20} color="#10B981" />
+                <Text style={styles.overviewValue}>
+                  ${groups.reduce((total, group) => total + Math.abs(group.balance || 0), 0).toFixed(2)}
+                </Text>
+                <Text style={styles.overviewLabel}>Total Balance</Text>
+              </View>
+              <View style={styles.overviewDivider} />
+              <View style={styles.overviewItem}>
+                <PiggyBank size={20} color="#0EA5E9" />
+                <Text style={styles.overviewValue}>
+                  ${groups.reduce((total, group) => total + (group.savings || 0), 0).toLocaleString()}
+                </Text>
+                <Text style={styles.overviewLabel}>Group Savings</Text>
+              </View>
+              <View style={styles.overviewDivider} />
+              <View style={styles.overviewItem}>
+                <DollarSign size={20} color="#6B7280" />
+                <Text style={styles.overviewValue}>
+                  ${groups.reduce((total, group) => total + (group.totalSpent || 0), 0).toLocaleString()}
+                </Text>
+                <Text style={styles.overviewLabel}>Total Spent</Text>
+              </View>
+            </View>
           </View>
-          <View style={styles.insightsContent}>
-            <Text style={styles.insightsTitle}>GPT Integration Active</Text>
-            <Text style={styles.insightsDescription}>
-              AI-powered smart split suggestions are now available
-            </Text>
-          </View>
-          <TouchableOpacity style={styles.insightsAction}>
-            <Zap size={16} color="#0EA5E9" />
-          </TouchableOpacity>
-        </View>
+        )}
 
         {/* Tab Navigation */}
         <View style={styles.tabNavigation}>
@@ -370,7 +524,29 @@ export default function WalletsScreen() {
                         <View style={styles.groupInfo}>
                           <Text style={styles.groupName}>{group.name}</Text>
                           <Text style={styles.groupDescription}>{group.description}</Text>
-                          <Text style={[styles.groupMeta, { color: meta.color }]}> {meta.label} • {group.memberCount} members</Text>
+                          <Text style={[styles.groupMeta, { color: meta.color }]}>
+                            {meta.label} • {group.memberCount} members
+                            {group.tripDate && ` • Trip: ${new Date(group.tripDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`}
+                          </Text>
+                        </View>
+                        <View style={styles.groupStats}>
+                          <View style={styles.groupBalance}>
+                            <Text style={[
+                              styles.balanceAmount,
+                              { color: (group.balance || 0) >= 0 ? '#10B981' : '#EF4444' }
+                            ]}>
+                              {(group.balance || 0) >= 0 ? '+' : ''}${Math.abs(group.balance || 0).toFixed(2)}
+                            </Text>
+                            <Text style={styles.balanceLabel}>
+                              {(group.balance || 0) >= 0 ? 'owed to you' : 'you owe'}
+                            </Text>
+                          </View>
+                          <View style={styles.groupSavings}>
+                            <Text style={styles.savingsAmount}>
+                              ${(group.savings || 0).toLocaleString()}
+                            </Text>
+                            <Text style={styles.savingsLabel}>saved</Text>
+                          </View>
                         </View>
                       </View>
                     </TouchableOpacity>
@@ -435,6 +611,23 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#6B7280',
     fontFamily: 'Inter-Regular',
+  },
+  headerButtons: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  refreshButton: {
+    backgroundColor: '#6B7280',
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  refreshText: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: 'bold',
   },
   createButton: {
     backgroundColor: '#0EA5E9',
@@ -696,12 +889,42 @@ const styles = StyleSheet.create({
     marginBottom:12,
     shadowColor:'#000',shadowOffset:{width:0,height:1},shadowOpacity:0.05,shadowRadius:2,elevation:1,
   },
-  groupHeader:{flexDirection:'row',alignItems:'center'},
+  groupHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
   groupIcon:{width:32,height:32,borderRadius:16,justifyContent:'center',alignItems:'center',marginRight:12},
-  groupInfo:{flex:1},
+  groupInfo: {
+    flex: 1,
+    marginRight: 12,
+  },
   groupName:{fontSize:14,fontWeight:'600',color:'#111827',fontFamily:'Inter-SemiBold'},
   groupDescription:{fontSize:12,color:'#6B7280',fontFamily:'Inter-Regular',marginTop:2},
-  groupMeta:{fontSize:11,fontFamily:'Inter-Medium',marginTop:2},
+  groupMeta: {
+    fontSize: 12,
+    fontWeight: '500',
+    fontFamily: 'Inter-Medium',
+  },
+  groupBalance: {
+    alignItems: 'flex-end',
+  },
+  balanceAmount: {
+    fontSize: 16,
+    fontWeight: '600',
+    fontFamily: 'Inter-SemiBold',
+    marginBottom: 2,
+  },
+  balanceLabel: {
+    fontSize: 11,
+    color: '#9CA3AF',
+    fontFamily: 'Inter-Regular',
+  },
+  totalSpent: {
+    fontSize: 10,
+    color: '#9CA3AF',
+    fontFamily: 'Inter-Regular',
+  },
   reasoningCard: {
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -783,5 +1006,203 @@ const styles = StyleSheet.create({
     color: '#1D4ED8',
     fontFamily: 'Inter-Medium',
     textTransform: 'capitalize',
+  },
+  // Savings styles
+  savingsContent: {
+    flex: 1,
+  },
+  savingsGoalsList: {
+    gap: 16,
+  },
+  savingsGoalCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 5,
+    overflow: 'hidden',
+  },
+  goalHeader: {
+    padding: 20,
+  },
+  goalTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 12,
+  },
+  goalEmoji: {
+    fontSize: 20,
+  },
+  goalTitleContainer: {
+    flex: 1,
+  },
+  goalTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    fontFamily: 'Inter-Bold',
+  },
+  goalDescription: {
+    fontSize: 12,
+    color: 'rgba(255, 255, 255, 0.9)',
+    fontFamily: 'Inter-Medium',
+    marginTop: 2,
+  },
+  goalAmount: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    fontFamily: 'Inter-Bold',
+  },
+  goalBody: {
+    padding: 16,
+  },
+  progressSection: {
+    marginBottom: 16,
+  },
+  progressBar: {
+    height: 6,
+    backgroundColor: '#F3F4F6',
+    borderRadius: 3,
+    overflow: 'hidden',
+    marginBottom: 6,
+  },
+  progressFill: {
+    height: '100%',
+    borderRadius: 3,
+  },
+  progressText: {
+    fontSize: 12,
+    color: '#6B7280',
+    fontFamily: 'Inter-Medium',
+    textAlign: 'center',
+  },
+  statsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  statItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  statText: {
+    fontSize: 11,
+    color: '#6B7280',
+    fontFamily: 'Inter-Medium',
+  },
+  insightsSection: {
+    marginBottom: 16,
+  },
+  insightLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1F2937',
+    fontFamily: 'Inter-SemiBold',
+    marginBottom: 8,
+  },
+  insightText: {
+    fontSize: 12,
+    color: '#4B5563',
+    fontFamily: 'Inter-Regular',
+    marginBottom: 3,
+    lineHeight: 16,
+  },
+  goalActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  contributeButton: {
+    flex: 1,
+    backgroundColor: '#0EA5E9',
+    borderRadius: 10,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  contributeButtonText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    fontFamily: 'Inter-SemiBold',
+  },
+  detailsButton: {
+    flex: 1,
+    backgroundColor: '#F3F4F6',
+    borderRadius: 10,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  detailsButtonText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#374151',
+    fontFamily: 'Inter-SemiBold',
+  },
+  // Balance Overview
+  balanceOverview: {
+    paddingHorizontal: 24,
+    marginBottom: 24,
+  },
+  overviewCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 20,
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 4,
+  },
+  overviewItem: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  overviewValue: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1F2937',
+    fontFamily: 'Inter-Bold',
+    marginTop: 8,
+    marginBottom: 4,
+  },
+  overviewLabel: {
+    fontSize: 12,
+    color: '#6B7280',
+    fontFamily: 'Inter-Medium',
+  },
+  overviewDivider: {
+    width: 1,
+    height: 40,
+    backgroundColor: '#E5E7EB',
+    marginHorizontal: 16,
+  },
+  // Group Cards
+  groupStats: {
+    flexDirection: 'column',
+    alignItems: 'flex-end',
+    gap: 8,
+  },
+  groupSavings: {
+    alignItems: 'flex-end',
+  },
+  savingsAmount: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#0EA5E9',
+    fontFamily: 'Inter-Medium',
+    marginBottom: 2,
+  },
+  savingsLabel: {
+    fontSize: 11,
+    color: '#6B7280',
+    fontFamily: 'Inter-Regular',
   },
 }); 

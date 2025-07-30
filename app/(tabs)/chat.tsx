@@ -16,7 +16,7 @@ import {
   Dimensions,
   Image,
 } from 'react-native';
-import { Send, Bot, User, TrendingUp, DollarSign, Target, Lightbulb } from 'lucide-react-native';
+import { Send, Bot, User, TrendingUp, DollarSign, Target, Lightbulb, CheckCircle, XCircle, Receipt, Users } from 'lucide-react-native';
 import MarkdownText from '../../components/MarkdownText';
 
 const { width } = Dimensions.get('window');
@@ -29,6 +29,11 @@ interface Message {
   suggestions?: string[];
   tripSuggestions?: TripSuggestion[];
   paymentRequest?: PaymentRequest;
+  actionTaken?: {
+    type: string;
+    data: any;
+    success: boolean;
+  };
 }
 
 interface TripSuggestion {
@@ -62,7 +67,7 @@ export default function ChatScreen() {
   const scrollViewRef = useRef<ScrollView>(null);
 
   useEffect(() => {
-    if (chatData?.messages) {
+    if (chatData && 'messages' in chatData && Array.isArray(chatData.messages)) {
       setMessages(chatData.messages.map((msg: any) => ({
         ...msg,
         timestamp: new Date(msg.timestamp)
@@ -97,7 +102,7 @@ export default function ChatScreen() {
     try {
       const response = await apiService.sendChatMessage(text);
       
-      if (response.success && response.data?.message) {
+      if (response.success && response.data && 'message' in response.data) {
         const aiMessage: Message = {
           ...response.data.message,
           timestamp: new Date(response.data.message.timestamp)
@@ -295,6 +300,77 @@ export default function ChatScreen() {
                 </View>
               )}
 
+              {/* Action Taken Indicator */}
+              {message.actionTaken && (
+                <View style={styles.actionContainer}>
+                  <View style={styles.actionHeader}>
+                    {message.actionTaken.success ? (
+                      <CheckCircle size={16} color="#10B981" />
+                    ) : (
+                      <XCircle size={16} color="#EF4444" />
+                    )}
+                    <Text style={[
+                      styles.actionTitle,
+                      { color: message.actionTaken.success ? '#10B981' : '#EF4444' }
+                    ]}>
+                      {message.actionTaken.success ? 'Action Completed' : 'Action Failed'}
+                    </Text>
+                  </View>
+                  
+                  {message.actionTaken.type === 'expense_added' && (
+                    <View style={styles.actionDetails}>
+                      <View style={styles.actionRow}>
+                        <Receipt size={14} color="#6B7280" />
+                        <Text style={styles.actionText}>
+                          {message.actionTaken.success 
+                            ? `Added $${message.actionTaken.data.amount} expense to ${message.actionTaken.data.groupName}`
+                            : `Failed to add $${message.actionTaken.data.amount} expense`
+                          }
+                        </Text>
+                      </View>
+                      {message.actionTaken.data.description && (
+                        <Text style={styles.actionDescription}>
+                          "{message.actionTaken.data.description}"
+                        </Text>
+                      )}
+                    </View>
+                  )}
+
+                  {message.actionTaken.type === 'group_created' && (
+                    <View style={styles.actionDetails}>
+                      <View style={styles.actionRow}>
+                        <Users size={14} color="#6B7280" />
+                        <Text style={styles.actionText}>
+                          {message.actionTaken.success 
+                            ? `Created ${message.actionTaken.data.category === 'travel' ? 'trip' : 'group'}: ${message.actionTaken.data.groupName}`
+                            : `Failed to create ${message.actionTaken.data.category === 'travel' ? 'trip' : 'group'}`
+                          }
+                        </Text>
+                      </View>
+                      {message.actionTaken.success && (
+                        <View style={styles.groupCreatedDetails}>
+                          {message.actionTaken.data.memberCount && (
+                            <Text style={styles.actionDescription}>
+                              👥 {message.actionTaken.data.memberCount} members
+                            </Text>
+                          )}
+                          {message.actionTaken.data.estimatedBudget && (
+                            <Text style={styles.actionDescription}>
+                              💰 ${message.actionTaken.data.estimatedBudget} estimated budget
+                            </Text>
+                          )}
+                          {message.actionTaken.data.destination && (
+                            <Text style={styles.actionDescription}>
+                              📍 {message.actionTaken.data.destination}
+                            </Text>
+                          )}
+                        </View>
+                      )}
+                    </View>
+                  )}
+                </View>
+              )}
+
               {/* Payment Request */}
               {message.paymentRequest && (
                 <View style={styles.paymentContainer}>
@@ -313,7 +389,7 @@ export default function ChatScreen() {
                   </View>
                   <TouchableOpacity 
                     style={styles.payButton}
-                    onPress={() => handlePayment(message.paymentRequest)}
+                    onPress={() => message.paymentRequest && handlePayment(message.paymentRequest)}
                   >
                     <CreditCard size={16} color="#FFFFFF" />
                     <Text style={styles.payButtonText}>Pay Now</Text>
@@ -357,18 +433,26 @@ export default function ChatScreen() {
             
             <TouchableOpacity 
               style={styles.quickActionChip}
-              onPress={() => sendMessage("How can I save more money?")}
+              onPress={() => sendMessage("Show my spending summary")}
             >
               <Target size={14} color="#0EA5E9" />
-              <Text style={styles.quickActionText}>Save More</Text>
+              <Text style={styles.quickActionText}>My Spending</Text>
             </TouchableOpacity>
             
             <TouchableOpacity 
               style={styles.quickActionChip}
-              onPress={() => sendMessage("Split a restaurant bill")}
+              onPress={() => sendMessage("I paid $50 for dinner at the steakhouse")}
             >
               <DollarSign size={14} color="#0EA5E9" />
-              <Text style={styles.quickActionText}>Split Bill</Text>
+              <Text style={styles.quickActionText}>Add Expense</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={styles.quickActionChip}
+              onPress={() => sendMessage("Create a trip to Paris with 3 friends for 7 days")}
+            >
+              <Users size={14} color="#0EA5E9" />
+              <Text style={styles.quickActionText}>Create Trip</Text>
             </TouchableOpacity>
             
             <TouchableOpacity 
@@ -809,5 +893,50 @@ const styles = StyleSheet.create({
   },
   sendButtonInactive: {
     backgroundColor: 'transparent',
+  },
+  // Action taken styles
+  actionContainer: {
+    marginLeft: 44,
+    marginTop: 12,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 8,
+    padding: 12,
+    borderLeftWidth: 3,
+    borderLeftColor: '#10B981',
+  },
+  actionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 8,
+  },
+  actionTitle: {
+    fontSize: 12,
+    fontWeight: '600',
+    fontFamily: 'Inter-SemiBold',
+  },
+  actionDetails: {
+    gap: 4,
+  },
+  actionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  actionText: {
+    fontSize: 12,
+    color: '#374151',
+    fontFamily: 'Inter-Medium',
+  },
+  actionDescription: {
+    fontSize: 11,
+    color: '#6B7280',
+    fontFamily: 'Inter-Regular',
+    fontStyle: 'italic',
+    marginLeft: 20,
+  },
+  groupCreatedDetails: {
+    marginTop: 8,
+    gap: 4
   },
 });
