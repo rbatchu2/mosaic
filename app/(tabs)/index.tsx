@@ -18,7 +18,6 @@ interface Group {
   id: string;
   name: string;
   balance: number;
-  savings: number;
 }
 
 interface Activity {
@@ -41,14 +40,7 @@ interface PendingRequest {
   dueDate: Date;
 }
 
-interface GroupGoal {
-  id: string;
-  groupName: string;
-  name: string;
-  current: number;
-  target: number;
-  emoji: string;
-}
+
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -56,18 +48,18 @@ export default function HomeScreen() {
   const [groups, setGroups] = useState<Group[]>([]);
   const [recentActivity, setRecentActivity] = useState<Activity[]>([]);
   const [pendingRequests, setPendingRequests] = useState<PendingRequest[]>([]);
-  const [groupGoals, setGroupGoals] = useState<GroupGoal[]>([]);
+
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     // Simulate API call
     setTimeout(() => {
       setGroups([
-        { id: 'group_001', name: 'Foodie Friends', balance: 127.45, savings: 1250 },
-        { id: 'group_002', name: 'House Squad', balance: -85.60, savings: 2400 },
-        { id: 'group_003', name: 'SFO to Moab Trip', balance: 156.30, savings: 1100 },
-        { id: 'group_004', name: 'Road Trip Crew', balance: 234.75, savings: 890 },
-        { id: 'group_005', name: 'Weekend Warriors', balance: -43.20, savings: 675 }
+        { id: 'group_001', name: 'Foodie Friends', balance: 127.45 },
+        { id: 'group_002', name: 'House Squad', balance: -85.60 },
+        { id: 'group_003', name: 'SFO to Moab Trip', balance: 156.30 },
+        { id: 'group_004', name: 'Road Trip Crew', balance: 234.75 },
+        { id: 'group_005', name: 'Weekend Warriors', balance: -43.20 }
       ]);
 
       setRecentActivity([
@@ -118,24 +110,7 @@ export default function HomeScreen() {
         }
       ]);
 
-      setGroupGoals([
-        {
-          id: 'goal_001',
-          groupName: 'SFO to Moab Trip',
-          name: 'Trip Fund',
-          current: 1100,
-          target: 2400,
-          emoji: ''
-        },
-        {
-          id: 'goal_002',
-          groupName: 'House Squad',
-          name: 'Emergency Fund',
-          current: 2400,
-          target: 3000,
-          emoji: ''
-        }
-      ]);
+
 
       setLoading(false);
     }, 1000);
@@ -144,7 +119,7 @@ export default function HomeScreen() {
   const totalOwed = groups.reduce((sum, group) => sum + Math.max(group.balance, 0), 0);
   const totalOwing = groups.reduce((sum, group) => sum + Math.abs(Math.min(group.balance, 0)), 0);
   const netBalance = totalOwed - totalOwing;
-  const totalSavings = groups.reduce((sum, group) => sum + group.savings, 0);
+
 
   const handleChatPress = () => {
     router.push('/chat');
@@ -230,10 +205,6 @@ export default function HomeScreen() {
               <Text style={styles.balanceItemValue}>-${totalOwing.toFixed(2)}</Text>
               <Text style={styles.balanceItemLabel}>you owe</Text>
             </View>
-            <View style={styles.balanceItem}>
-              <Text style={styles.balanceItemValue}>${totalSavings.toLocaleString()}</Text>
-              <Text style={styles.balanceItemLabel}>group savings</Text>
-            </View>
           </View>
         </View>
 
@@ -275,34 +246,7 @@ export default function HomeScreen() {
           </View>
         )}
 
-        {/* Active Group Goals */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Active Savings Goals</Text>
-          <ScrollView 
-            horizontal 
-            showsHorizontalScrollIndicator={false}
-            style={styles.goalsContainer}
-          >
-            {groupGoals.map((goal) => {
-              const progress = (goal.current / goal.target) * 100;
-              return (
-                <View key={goal.id} style={styles.goalCard}>
-                  <Text style={styles.goalName}>{goal.name}</Text>
-                  <Text style={styles.goalGroup}>{goal.groupName}</Text>
-                  <View style={styles.goalProgress}>
-                    <View style={styles.goalProgressBar}>
-                      <View style={[styles.goalProgressFill, { width: `${Math.min(progress, 100)}%` }]} />
-                    </View>
-                    <Text style={styles.goalProgressText}>{Math.round(progress)}%</Text>
-                  </View>
-                  <Text style={styles.goalAmount}>
-                    ${goal.current.toLocaleString()} of ${goal.target.toLocaleString()}
-                  </Text>
-                </View>
-              );
-            })}
-          </ScrollView>
-        </View>
+
 
         {/* Quick Actions */}
         <View style={styles.section}>
@@ -510,12 +454,12 @@ const styles = StyleSheet.create({
     marginHorizontal: 24,
     padding: 24,
     borderRadius: 16,
-    marginBottom: 32,
+    marginBottom: 24,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
   },
   balanceLabel: {
     fontSize: 14,
@@ -524,29 +468,31 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   balanceAmount: {
-    fontSize: 36,
-    fontWeight: '700',
+    fontSize: 40,
+    fontWeight: '800',
     fontFamily: 'Inter-Bold',
-    marginBottom: 16,
+    marginBottom: 20,
+    letterSpacing: -0.5,
   },
   balanceBreakdown: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'space-around',
   },
   balanceItem: {
     alignItems: 'center',
+    flex: 1,
   },
   balanceItemValue: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 18,
+    fontWeight: '700',
     color: '#1F2937',
-    fontFamily: 'Inter-SemiBold',
-    marginBottom: 4,
+    fontFamily: 'Inter-Bold',
+    marginBottom: 6,
   },
   balanceItemLabel: {
-    fontSize: 12,
+    fontSize: 13,
     color: '#6B7280',
-    fontFamily: 'Inter-Regular',
+    fontFamily: 'Inter-Medium',
   },
   section: {
     marginHorizontal: 24,

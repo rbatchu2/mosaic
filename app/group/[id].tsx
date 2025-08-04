@@ -71,28 +71,7 @@ export default function GroupDetailScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  // Savings goals state
-  interface SavingsGoal {
-    id: string;
-    groupId: string;
-    name: string;
-    description: string;
-    targetAmount: number;
-    currentAmount: number;
-    targetDate: string;
-    category: 'vacation' | 'house' | 'emergency' | 'event' | 'other';
-    participants: {
-      userId: string;
-      name: string;
-      contributionTarget: number;
-      contributedAmount: number;
-    }[];
-    aiInsights: {
-      monthlyTarget: number;
-      completionProbability: number;
-      suggestions: string[];
-    };
-  }
+
 
   // Group forecast state
   interface GroupForecast {
@@ -126,10 +105,10 @@ export default function GroupDetailScreen() {
     }[];
   }
 
-  const [savingsGoals, setSavingsGoals] = useState<SavingsGoal[]>([]);
+
   const [forecast, setForecast] = useState<GroupForecast | null>(null);
   const [forecastPeriod, setForecastPeriod] = useState<'1M' | '3M' | '6M' | '1Y'>('3M');
-  const [activeTab, setActiveTab] = useState<'overview' | 'transactions' | 'balances' | 'splits' | 'savings' | 'forecasting'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'splits' | 'forecasting'>('overview');
 
   const fetchGroupData = async () => {
     try {
@@ -163,12 +142,7 @@ export default function GroupDetailScreen() {
         setSplitRequests(splitsData.splits);
       }
 
-      // Fetch group savings goals
-      const savingsRes = await fetch(`/api/groups/savings?groupId=${id}&userId=00000000-0000-0000-0000-000000000001`);
-      const savingsData = await savingsRes.json();
-      if (savingsData.success) {
-        setSavingsGoals(savingsData.goals);
-      }
+
 
       // Fetch group forecast
       const forecastRes = await fetch(`/api/groups/forecasting?groupId=${id}&period=${forecastPeriod}&userId=00000000-0000-0000-0000-000000000001`);
@@ -247,34 +221,7 @@ export default function GroupDetailScreen() {
         }
       ]);
 
-      // Mock savings goals for this group
-      setSavingsGoals([
-        {
-          id: 'goal_group_001',
-          groupId: id as string,
-          name: `${group?.name || 'Group'} Vacation Fund`,
-          description: 'Shared savings for our next group adventure',
-          targetAmount: 2400,
-          currentAmount: 890,
-          targetDate: '2024-08-15',
-          category: 'vacation',
-          participants: [
-            { userId: '1', name: 'You', contributionTarget: 600, contributedAmount: 250 },
-            { userId: '2', name: 'Sarah', contributionTarget: 600, contributedAmount: 280 },
-            { userId: '3', name: 'Mike', contributionTarget: 600, contributedAmount: 180 },
-            { userId: '4', name: 'Emma', contributionTarget: 600, contributedAmount: 180 }
-          ],
-          aiInsights: {
-            monthlyTarget: 380,
-            completionProbability: 0.75,
-            suggestions: [
-              'Set up auto-transfers of $95/week per person',
-              'Track group dining expenses for budget optimization',
-              'Consider shared investment account for better returns'
-            ]
-          }
-        }
-      ]);
+
 
       // Mock forecast for this group
       setForecast({
@@ -450,9 +397,6 @@ export default function GroupDetailScreen() {
         <View style={styles.tabContainer}>
           {[
             { key: 'overview', label: 'Overview' },
-            { key: 'savings', label: 'Savings' },
-            { key: 'transactions', label: 'Transactions' },
-            { key: 'balances', label: 'Balances' },
             { key: 'splits', label: 'Splits' },
             { key: 'forecasting', label: 'Forecast' }
           ].map(tab => (
@@ -475,7 +419,7 @@ export default function GroupDetailScreen() {
             <View style={styles.section}>
               <View style={styles.sectionHeader}>
                 <Text style={styles.sectionTitle}>Recent Activity</Text>
-                <TouchableOpacity onPress={() => setActiveTab('transactions')}>
+                <TouchableOpacity onPress={() => Alert.alert('Transactions', 'Transaction history coming soon!')}>
                   <Text style={styles.seeAllText}>See All</Text>
                 </TouchableOpacity>
               </View>
@@ -484,9 +428,11 @@ export default function GroupDetailScreen() {
                   <View style={styles.transactionLeft}>
                     <Receipt size={16} color="#6B7280" />
                     <View style={styles.transactionInfo}>
-                      <Text style={styles.transactionDescription}>{transaction.description}</Text>
-                      <Text style={styles.transactionMeta}>
-                        Paid by {transaction.paidBy.name} • {formatRelativeTime(transaction.date)}
+                      <Text style={styles.transactionDescription} numberOfLines={1} ellipsizeMode="tail">
+                        {transaction.description}
+                      </Text>
+                      <Text style={styles.transactionMeta} numberOfLines={1} ellipsizeMode="tail">
+                        {transaction.paidBy.name} • {formatRelativeTime(transaction.date)} • {transaction.participants.length} people
                       </Text>
                     </View>
                   </View>
@@ -530,66 +476,9 @@ export default function GroupDetailScreen() {
           </View>
         )}
 
-        {activeTab === 'transactions' && (
-          <View style={styles.tabContent}>
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>All Transactions</Text>
-              {transactions.map(transaction => (
-                <View key={transaction.id} style={styles.transactionCard}>
-                  <View style={styles.transactionLeft}>
-                    <Receipt size={16} color="#6B7280" />
-                    <View style={styles.transactionInfo}>
-                      <Text style={styles.transactionDescription}>{transaction.description}</Text>
-                      <Text style={styles.transactionMeta}>
-                        Paid by {transaction.paidBy.name} • {formatRelativeTime(transaction.date)}
-                      </Text>
-                      <Text style={styles.participantsText}>
-                        Split between: {transaction.participants.map(p => p.name).join(', ')}
-                      </Text>
-                    </View>
-                  </View>
-                  <View style={styles.transactionRight}>
-                    <Text style={styles.transactionAmount}>${transaction.amount.toFixed(2)}</Text>
-                    <View style={[styles.statusBadge, { backgroundColor: transaction.status === 'completed' ? '#D1FAE5' : '#FEF3C7' }]}>
-                      <Text style={[styles.statusText, { color: transaction.status === 'completed' ? '#065F46' : '#92400E' }]}>
-                        {transaction.status}
-                      </Text>
-                    </View>
-                  </View>
-                </View>
-              ))}
-            </View>
-          </View>
-        )}
 
-        {activeTab === 'balances' && (
-          <View style={styles.tabContent}>
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Group Balances</Text>
-              {balances.map(balance => (
-                <View key={balance.userId} style={styles.balanceCard}>
-                  <View style={styles.balanceLeft}>
-                    <Text style={styles.balanceName}>{balance.userName}</Text>
-                    <Text style={styles.balanceDetails}>
-                      Paid: ${balance.totalPaid.toFixed(2)} • Owes: ${balance.totalOwed.toFixed(2)}
-                    </Text>
-                  </View>
-                  <View style={styles.balanceRight}>
-                    <Text style={[
-                      styles.balanceAmount,
-                      { color: balance.balance >= 0 ? '#10B981' : '#EF4444' }
-                    ]}>
-                      {balance.balance >= 0 ? '+' : ''}${balance.balance.toFixed(2)}
-                    </Text>
-                    <Text style={styles.balanceLabel}>
-                      {balance.balance >= 0 ? 'Gets back' : 'Owes'}
-                    </Text>
-                  </View>
-                </View>
-              ))}
-            </View>
-          </View>
-        )}
+
+
 
         {activeTab === 'splits' && (
           <View style={styles.tabContent}>
@@ -655,105 +544,7 @@ export default function GroupDetailScreen() {
           </View>
         )}
 
-        {activeTab === 'savings' && (
-          <View style={styles.tabContent}>
-            <View style={styles.section}>
-              <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>Savings Goals</Text>
-                <TouchableOpacity onPress={() => Alert.alert('Add Goal', 'Create new shared savings goal coming soon!')}>
-                  <Plus size={16} color="#0EA5E9" />
-                </TouchableOpacity>
-              </View>
-              
-              {savingsGoals.length === 0 ? (
-                <View style={styles.emptyState}>
-                  <PiggyBank size={32} color="#9CA3AF" />
-                  <Text style={styles.emptyStateText}>No Savings Goals Yet</Text>
-                  <Text style={styles.emptyStateSubtext}>Create shared goals to save together</Text>
-                </View>
-              ) : (
-                savingsGoals.map((goal) => {
-                  const progress = Math.min((goal.currentAmount / goal.targetAmount) * 100, 100);
-                  const daysLeft = Math.ceil((new Date(goal.targetDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
-                  
-                  const getCategoryIcon = (category: string) => {
-                    switch (category) {
-                      case 'vacation': return '🌎';
-                      case 'house': return '🏡';
-                      case 'emergency': return '🚨';
-                      case 'event': return '🎉';
-                      default: return '💰';
-                    }
-                  };
 
-                  const categoryColor = '#0EA5E9'; // Always blue
-
-                  return (
-                    <View key={goal.id} style={styles.savingsGoalCard}>
-                      {/* Goal Header */}
-                      <View style={styles.goalHeader}>
-                        <View style={styles.goalHeaderLeft}>
-                          <Text style={styles.goalEmoji}>{getCategoryIcon(goal.category)}</Text>
-                          <View style={styles.goalInfo}>
-                            <Text style={styles.goalName}>{goal.name}</Text>
-                            <Text style={styles.goalMeta}>
-                              {goal.participants.length} people • {daysLeft > 0 ? `${daysLeft} days left` : 'Goal reached!'}
-                            </Text>
-                          </View>
-                        </View>
-                        <View style={styles.goalAmountSection}>
-                          <Text style={styles.goalAmount}>
-                            ${goal.currentAmount.toLocaleString()}
-                          </Text>
-                          <Text style={styles.goalTarget}>
-                            of ${goal.targetAmount.toLocaleString()}
-                          </Text>
-                        </View>
-                      </View>
-
-                      {/* Progress Bar */}
-                      <View style={styles.progressContainer}>
-                        <View style={styles.progressBar}>
-                          <View 
-                            style={[
-                              styles.progressFill, 
-                              { width: `${progress}%`, backgroundColor: categoryColor }
-                            ]} 
-                          />
-                        </View>
-                        <Text style={styles.progressText}>
-                          {progress.toFixed(0)}% complete
-                        </Text>
-                      </View>
-
-                      {/* AI Insights */}
-                      <View style={styles.aiInsightsRow}>
-                        <View style={styles.insightItem}>
-                          <Text style={styles.insightValue}>
-                            ${goal.aiInsights.monthlyTarget}/mo
-                          </Text>
-                          <Text style={styles.insightLabel}>needed</Text>
-                        </View>
-                        <View style={styles.insightItem}>
-                          <Text style={[styles.insightValue, {
-                            color: goal.aiInsights.completionProbability > 0.7 ? '#10B981' :
-                                   goal.aiInsights.completionProbability > 0.4 ? '#F59E0B' : '#EF4444'
-                          }]}>
-                            {Math.round(goal.aiInsights.completionProbability * 100)}%
-                          </Text>
-                          <Text style={styles.insightLabel}>likely</Text>
-                        </View>
-                        <TouchableOpacity style={[styles.contributeBtn, { backgroundColor: categoryColor }]}>
-                          <Text style={styles.contributeBtnText}>Contribute</Text>
-                        </TouchableOpacity>
-                      </View>
-                    </View>
-                  );
-                })
-              )}
-            </View>
-          </View>
-        )}
 
         {activeTab === 'forecasting' && (
           <View style={styles.tabContent}>
@@ -1078,12 +869,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
     fontFamily: 'Inter-Regular',
   },
-  participantsText: {
-    fontSize: 11,
-    color: '#9CA3AF',
-    marginTop: 4,
-    fontFamily: 'Inter-Regular',
-  },
+
   transactionRight: {
     alignItems: 'flex-end',
   },
@@ -1136,49 +922,12 @@ const styles = StyleSheet.create({
   memberBalance: {
     alignItems: 'flex-end',
   },
-  balanceCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 8,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  balanceLeft: {
-    flex: 1,
-  },
-  balanceName: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#1F2937',
-    fontFamily: 'Inter-SemiBold',
-  },
-  balanceDetails: {
-    fontSize: 12,
-    color: '#6B7280',
-    marginTop: 2,
-    fontFamily: 'Inter-Regular',
-  },
-  balanceRight: {
-    alignItems: 'flex-end',
-  },
   balanceAmount: {
     fontSize: 16,
     fontWeight: '700',
     fontFamily: 'Inter-Bold',
   },
-  balanceLabel: {
-    fontSize: 11,
-    color: '#6B7280',
-    marginTop: 2,
-    fontFamily: 'Inter-Regular',
-  },
+
   splitCard: {
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
