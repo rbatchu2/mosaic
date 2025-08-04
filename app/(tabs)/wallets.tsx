@@ -356,7 +356,7 @@ export default function WalletsScreen() {
               <View style={styles.overviewItem}>
                 <DollarSign size={20} color="#6B7280" />
                 <Text style={styles.overviewValue}>
-                  ${groups.reduce((total, group) => total + (group.totalSpent || 0), 0).toLocaleString()}
+                  ${Math.round(groups.reduce((total, group) => total + (group.totalSpent || 0), 0)).toLocaleString()}
                 </Text>
                 <Text style={styles.overviewLabel}>Total Spent</Text>
               </View>
